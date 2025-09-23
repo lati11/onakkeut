@@ -60,6 +60,10 @@
                         </div>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-center space-x-6">
+                        <p id="crab-count-label" class="text-md text-gray-700"><span class="font-semibold">만난 게 :</span> 0 마리</p>
+                        <p id="minigame-count-label" class="text-md text-gray-700"><span class="font-semibold">진행한 미니게임 :</span> 0 번</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-center space-x-6">
                         <img src="images/coin.png" alt="코인 아이콘" class="w-6 h-6 rounded-full">
                         <p id="earned-label" class="text-md text-gray-700"><span class="font-semibold">번 돈 :</span> 0 코인</p>
                         <p id="spent-label" class="text-md text-gray-700"><span class="font-semibold">쓴 돈 :</span> 0 코인</p>
@@ -84,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
 
     function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime } = results;
+        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount } = results;
         const currentJobData = JOB_DATA[jobName];
 
         const formatDate = (date) => date.toLocaleString('sv-SE').replace(/-/g, '.');
@@ -137,6 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('session-label').textContent = `생직 시간 (총 ${totalMinutes}분)`;
         document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
         document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${coinsSpent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
+        document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">만난 게 :</span> ${crabCount} 마리`;
+        document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">진행한 미니게임 :</span> ${minigameCount} 번`;
     }
 
     function toggleSessionDetails(event) {
