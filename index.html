@@ -190,7 +190,17 @@ document.addEventListener('DOMContentLoaded', () => {
             let spentMatch = currentLine.match(coinSpentPattern);
             if (spentMatch) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
             let itemMatch = currentLine.match(acquisitionPattern);
-            if (!itemMatch) return;
+            if (itemMatch) { // ❗ itemMatch를 독립적인 if 블록으로 분리합니다.
+                const rawItem = itemMatch[1].trim();
+                const count = parseInt(itemMatch[2], 10);
+                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                if (itemList.includes(itemName)) {
+                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                    if (currentSession) { // 세션이 진행 중일 때만 세션 아이템으로 추가
+                        currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
+                    }
+                }
+            }
             let foundRankingPoints = false;
             for (let j = 1; j < 5; j++) {
                 if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) {
