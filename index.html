@@ -7,8 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/iconv-lite/0.6.3/iconv-lite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/dist/buffer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/iconv-lite@0.6.3/dist/iconv-lite.min.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
-                            text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
+                            text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
                         }
                         resolve(text);
                     } catch (error) {
@@ -159,10 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeStr = timeMatch[1];
                 const timestamp = new Date(`${logDate}T${timeStr}`);
                 
-                if (!(timestamp instanceof Date) || isNaN(timestamp)) {
-                    return; 
-                }
-
                 if (firstLogTime === null) firstLogTime = timestamp;
                 lastLogTime = timestamp;
 
@@ -192,12 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('로그 파일을 먼저 선택해주세요.');
             return;
         }
-
-        if (typeof window.iconv === 'undefined' || typeof window.buffer === 'undefined') {
-            alert('분석 라이브러리를 불러오는 데 실패했습니다. 인터넷 연결을 확인하고 잠시 후 페이지를 새로고침(F5) 해주세요.');
-            return;
-        }
-
         loadingSpinner.classList.remove('hidden');
         document.getElementById('analysis-status').textContent = '분석이 완료되면 새 창이 열립니다.';
         try {
