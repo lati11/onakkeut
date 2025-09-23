@@ -138,7 +138,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
 
-        document.getElementById('session-label').textContent = `생직 시간 (총 ${totalMinutes}분)`;
+        const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
+        document.getElementById('session-label').innerHTML = `생직 시간 (총 ${totalMinutes}분)${rankingPointGainText}`;
         document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
         document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${coinsSpent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
         document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">만난 게 :</span> ${crabCount} 마리`;
