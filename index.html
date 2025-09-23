@@ -135,6 +135,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const sessions = [];
         let currentSession = null;
         let lastTime = null;
+        let firstLogTime = null;
+        let lastLogTime = null; 
         let coinsEarned = 0.0;
         let coinsSpent = 0.0;
         const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
@@ -161,6 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const [hours, minutes, seconds] = timeStr.split(':').map(Number);
                 const timestamp = new Date();
                 timestamp.setHours(hours, minutes, seconds, 0);
+                if (firstLogTime === null) firstLogTime = timestamp;
+                lastLogTime = timestamp;
                 if (currentSession === null) {
                     currentSession = { start: timestamp, end: timestamp, items: {} };
                     sessions.push(currentSession);
@@ -179,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-        return { totalItemCounts, sessions, coinsEarned, coinsSpent };
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime };
     }
     
     // analyzeButton 클릭 이벤트 핸들러는 이전과 동일 (수정 필요 없음)
