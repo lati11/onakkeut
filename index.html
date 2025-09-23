@@ -6,8 +6,10 @@
     <title>오낚끝 - 웹 버전</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/dist/buffer.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/iconv-lite@0.6.3/dist/iconv-lite.min.js"></script>
+
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
@@ -76,9 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileChosenLabel = document.getElementById('file-chosen');
     const modalTitle = document.getElementById('modal-title');
     
-    function createMainMenu() { /* ... unchanged ... */ const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
-    function openModal(jobName) { /* ... unchanged ... */ currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하세요'; loadingSpinner.classList.add('hidden'); }
-    function closeModal() { /* ... unchanged ... */ modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    function createMainMenu() { const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
+    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하세요'; loadingSpinner.classList.add('hidden'); }
+    function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
 
     fileInput.addEventListener('change', (e) => {
         logFiles = Array.from(e.target.files);
@@ -91,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ❗ 2. iconv-lite를 사용하도록 수정된 파일 읽기 함수
     async function readAndCombineFiles(files) {
         const fileReadPromises = files.map(file => {
             return new Promise((resolve, reject) => {
@@ -99,20 +100,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (event) => {
                     try {
                         const buffer = new Uint8Array(event.target.result);
-                        let text;
                         let dataToDecode = buffer;
 
-                        // .gz 파일인 경우 먼저 압축 해제
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
-
-                        // UTF-8으로 먼저 디코딩 시도
+                        
+                        let text;
                         try {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
-                            // UTF-8 실패 시 iconv-lite를 사용하여 CP949로 디코딩
-                            console.log(`UTF-8 decoding failed for ${file.name}, trying CP949...`);
                             text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
                         }
                         resolve(text);
@@ -128,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return allTexts.join('\n');
     }
 
-    // analyzeLog 함수는 이전과 동일 (수정 필요 없음)
     async function analyzeLog(logsText, itemList, logDate) {
         const logs = logsText.split(/\r?\n/);
         const totalItemCounts = {};
@@ -161,10 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
                 if (!timeMatch) return;
                 const timeStr = timeMatch[1];
-                const [hours, minutes, seconds] = timeStr.split(':').map(Number);
                 const timestamp = new Date(`${logDate}T${timeStr}`);
+                
                 if (firstLogTime === null) firstLogTime = timestamp;
                 lastLogTime = timestamp;
+
                 if (currentSession === null) {
                     currentSession = { start: timestamp, end: timestamp, items: {} };
                     sessions.push(currentSession);
@@ -186,7 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime };
     }
     
-    // analyzeButton 클릭 이벤트 핸들러는 이전과 동일 (수정 필요 없음)
     analyzeButton.addEventListener('click', async () => {
         if (logFiles.length === 0 || !currentJob) {
             alert('로그 파일을 먼저 선택해주세요.');
@@ -204,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
             }
-            // 날짜를 못찾으면 오늘 날짜 사용
             if (!logDate) {
                 const today = new Date();
                 const year = today.getFullYear();
