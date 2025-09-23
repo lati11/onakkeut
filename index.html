@@ -24,8 +24,9 @@
 
     <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm text-center">
         <div class="w-full text-left mb-4">
-            <h1 class="text-xl font-bold text-gray-700">오늘의 직업은? 🎣</h1>
+            <h1 class="text-xl font-bold text-gray-700">오낚끝 🎣</h1>
         </div>
+        <h2 class="text-2xl font-bold mb-8 text-gray-700">오늘의 직업은?</h2>
         <div id="job-buttons" class="space-y-4"></div>
     </div>
 
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modal-title');
     
     function createMainMenu() { const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
-    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하거나 여기에 드롭하세요'; loadingSpinner.classList.add('hidden'); }
+    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; updateFileLabel(); loadingSpinner.classList.add('hidden'); }
     function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
 
     fileInput.addEventListener('change', (e) => {
@@ -87,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFileLabel();
     });
 
+    // 2. 드래그 앤 드롭 기능
     const dropZone = document.getElementById('file-drop-zone');
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-green-500', 'bg-green-50'); });
     dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-green-500', 'bg-green-50'); });
@@ -96,11 +98,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const files = e.dataTransfer.files;
         if (files.length) {
             logFiles = Array.from(files);
-            fileInput.files = files;
+            fileInput.files = files; 
             updateFileLabel();
         }
     });
-    
+
     function updateFileLabel() {
         if (logFiles.length > 1) {
             fileChosenLabel.textContent = `${logFiles.length}개의 파일이 선택됨`;
@@ -111,8 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function readAndProcessFiles(files) {
-        let totalRankingPointGain = 0;
+    // 1. 세션별 날짜 적용을 위해 파일 읽기 로직 수정
+    async function readAndCombineFiles(files) {
         const fileReadPromises = files.map(file => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -120,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const buffer = new Uint8Array(event.target.result);
                         let dataToDecode = buffer;
-
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
@@ -130,21 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
                             text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
-                        }
-                        
-                        const lines = text.split(/\r?\n/);
-                        const rankingPointRegex = /\[생활 \S+ (\d+\.\d)\]/;
-                        let firstPoint = null, lastPoint = null;
-                        for(const line of lines){
-                            const match = line.match(rankingPointRegex);
-                            if(match){
-                                const point = parseFloat(match[1]);
-                                if(firstPoint === null) firstPoint = point;
-                                lastPoint = point;
-                            }
-                        }
-                        if(firstPoint !== null && lastPoint !== null){
-                            totalRankingPointGain += (lastPoint - firstPoint);
                         }
 
                         const dateRegex = /(\d{4}-\d{2}-\d{2})/;
@@ -156,22 +142,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             const today = new Date();
                             logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                         }
-
-                        const datedLines = lines.map(line => `${logDate}|${line}`);
+                        const datedLines = text.split(/\r?\n/).map(line => `${logDate}|${line}`);
                         resolve(datedLines);
-                    } catch (error) {
-                        reject(error);
-                    }
+                    } catch (error) { reject(error); }
                 };
                 reader.onerror = reject;
                 reader.readAsArrayBuffer(file);
             });
         });
         const allDatedLinesArrays = await Promise.all(fileReadPromises);
-        const allDatedLines = allDatedLinesArrays.flat();
-        return { allDatedLines, totalRankingPointGain };
+        return allDatedLinesArrays.flat();
     }
 
+    // 1. 세션별 날짜 적용을 위해 analyzeLog 함수 수정
     async function analyzeLog(datedLogs, itemList) {
         const logs = datedLogs;
         const totalItemCounts = {};
@@ -206,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!itemMatch) return;
             let foundRankingPoints = false;
             for (let j = 1; j < 5; j++) {
-                if ((i + j) < logs.length && logs[i+j].includes("생활랭킹 포인트")) {
+                if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
                     foundRankingPoints = true;
                     break;
                 }
@@ -243,12 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount };
     }
     
+    // 1. 세션별 날짜 적용을 위해 analyzeButton 핸들러 수정
     analyzeButton.addEventListener('click', async () => {
         if (logFiles.length === 0 || !currentJob) {
             alert('로그 파일을 먼저 선택해주세요.');
             return;
         }
-
         if (typeof window.iconv === 'undefined' || typeof window.buffer === 'undefined') {
             alert('분석 라이브러리를 불러오는 데 실패했습니다. 인터넷 연결을 확인하고 잠시 후 페이지를 새로고침(F5) 해주세요.');
             return;
@@ -257,10 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingSpinner.classList.remove('hidden');
         document.getElementById('analysis-status').textContent = '분석이 완료되면 새 창이 열립니다.';
         try {
-            const { allDatedLines, totalRankingPointGain } = await readAndProcessFiles(logFiles);
-            const results = await analyzeLog(allDatedLines, JOB_DATA[currentJob].items);
-            
-            results.totalRankingPointGain = totalRankingPointGain; 
+            const combinedDatedLogs = await readAndCombineFiles(logFiles);
+            const results = await analyzeLog(combinedDatedLogs, JOB_DATA[currentJob].items);
 
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
