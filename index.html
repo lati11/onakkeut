@@ -93,7 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function readAndCombineFiles(files) {
+    async function readAndProcessFiles(files) {
+        let totalRankingPointGain = 0;
         const fileReadPromises = files.map(file => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -101,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const buffer = new Uint8Array(event.target.result);
                         let dataToDecode = buffer;
-
+    
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
@@ -110,9 +111,39 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
-                            text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
+                            text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
                         }
-                        resolve(text);
+                        
+                        const lines = text.split(/\r?\n/);
+    
+                        // 생활랭킹 점수 계산
+                        const rankingPointRegex = /\[생활 \S+ ([\d,]+\.\d)\]/;
+                        let firstPoint = null, lastPoint = null;
+                        for(const line of lines){
+                            const match = line.match(rankingPointRegex);
+                            if(match){
+                                const point = parseFloat(match[1].replace(/,/g, ''));
+                                if(firstPoint === null) firstPoint = point;
+                                lastPoint = point;
+                            }
+                        }
+                        if(firstPoint !== null && lastPoint !== null){
+                            totalRankingPointGain += (lastPoint - firstPoint);
+                        }
+    
+                        // 날짜 추출
+                        const dateRegex = /(\d{4}-\d{2}-\d{2})/;
+                        let logDate = null;
+                        const match = file.name.match(dateRegex);
+                        if (match) {
+                            logDate = match[1];
+                        } else {
+                            const today = new Date();
+                            logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        }
+    
+                        const datedLines = lines.map(line => `${logDate}|${line}`);
+                        resolve(datedLines);
                     } catch (error) {
                         reject(error);
                     }
@@ -121,8 +152,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.readAsArrayBuffer(file);
             });
         });
-        const allTexts = await Promise.all(fileReadPromises);
-        return allTexts.join('\n');
+        const allDatedLinesArrays = await Promise.all(fileReadPromises);
+        const allDatedLines = allDatedLinesArrays.flat();
+        return { allDatedLines, totalRankingPointGain };
     }
 
     async function analyzeLog(logsText, itemList, logDate) {
@@ -219,8 +251,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDate = `${year}-${month}-${day}`;
             }
 
-            const combinedLogs = await readAndCombineFiles(logFiles);
-            const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items, logDate);
+            const { allDatedLines, totalRankingPointGain } = await readAndProcessFiles(logFiles);
+            const results = await analyzeLog(allDatedLines, JOB_DATA[currentJob].items);
+            
+            results.totalRankingPointGain = totalRankingPointGain;
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
             window.open('results.html', '_blank');
