@@ -162,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeStr = timeMatch[1];
                 const [hours, minutes, seconds] = timeStr.split(':').map(Number);
                 const timestamp = new Date(`${logDate}T${timeStr}`);
-                timestamp.setHours(hours, minutes, seconds, 0);
                 if (firstLogTime === null) firstLogTime = timestamp;
                 lastLogTime = timestamp;
                 if (currentSession === null) {
