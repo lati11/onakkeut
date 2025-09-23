@@ -86,11 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
 
     function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent } = results;
+        // ❗ firstLogTime, lastLogTime 받아오기
+        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime } = results;
         const currentJobData = JOB_DATA[jobName];
 
-        document.getElementById('page-title').textContent = currentJobData.title + " 분석 결과";
-        document.title = currentJobData.title + " 분석 결과";
+        // ❗ 페이지 제목 설정 (시간 포맷 함수 사용)
+        const formatDate = (date) => date.toLocaleString('sv-SE').replace(/-/g, '.');
+        const titleDateString = firstLogTime ? `${formatDate(new Date(firstLogTime))} ~ ${formatDate(new Date(lastLogTime))}` : "분석 결과";
+        document.getElementById('page-title').textContent = `${currentJobData.title} - ${titleDateString}`;
+        document.title = `${currentJobData.title} - ${titleDateString}`;
 
         const itemTableBody = document.getElementById('item-table-body');
         itemTableBody.innerHTML = '';
@@ -117,6 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tr = document.createElement('tr');
                 tr.className = 'session-row';
                 tr.dataset.index = idx;
+                const startTimeString = `${session.start.toLocaleDateString('ko-KR')} ${session.start.toLocaleTimeString('ko-KR')}`;
+                const endTimeString = `${session.end.toLocaleDateString('ko-KR')} ${session.end.toLocaleTimeString('ko-KR')}`;
+
                 tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${idx + 1}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${session.start.toLocaleTimeString('ko-KR')}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${session.end.toLocaleTimeString('ko-KR')}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${duration}</td>`;
                 sessionTableBody.appendChild(tr);
             });
