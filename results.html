@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
 
     function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates } = results;
+        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates, totalRankingPointGain, uniqueDates } = results;
         const currentJobData = JOB_DATA[jobName];
     
         // --- 1. 페이지 제목 설정 ---
