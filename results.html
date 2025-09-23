@@ -88,14 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayResults(results, jobName) {
         const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime } = results;
         const currentJobData = JOB_DATA[jobName];
-    
-        // 페이지 제목 설정
+
         const formatDate = (date) => date.toLocaleString('sv-SE').replace(/-/g, '.');
         const titleDateString = firstLogTime ? `${formatDate(new Date(firstLogTime))} ~ ${formatDate(new Date(lastLogTime))}` : "분석 결과";
         document.getElementById('page-title').textContent = `${currentJobData.title} - ${titleDateString}`;
         document.title = `${currentJobData.title} - ${titleDateString}`;
-    
-        // 1. 전체 부산물 목록 표시 (오류가 있던 부분 수정)
+
         const itemTableBody = document.getElementById('item-table-body');
         itemTableBody.innerHTML = '';
         const sortedTotalItems = currentJobData.items.filter(name => totalItemCounts[name] > 0);
@@ -103,19 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sortedTotalItems.length > 0) {
             sortedTotalItems.forEach(name => {
                 const tr = document.createElement('tr');
-                // ❗ 불필요한 시간 관련 코드를 모두 삭제하여 정리했습니다.
                 tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-contain" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
                 itemTableBody.appendChild(tr);
             });
         } else {
             itemTableBody.innerHTML = `<tr><td colspan="2" class="text-center px-6 py-4 text-gray-500">획득한 부산물이 없습니다.</td></tr>`;
         }
-    
-        // 2. 세션 목록 표시 (날짜 표시 형식 수정)
+
         sessionTableBody.innerHTML = '';
         let totalMinutes = 0;
         const parsedSessions = sessions.map(s => ({ ...s, start: new Date(s.start), end: new Date(s.end) }));
-    
+
         if (parsedSessions.length > 0) {
             parsedSessions.forEach((session, idx) => {
                 const duration = Math.max(1, Math.floor((session.end.getTime() - session.start.getTime()) / 60000));
@@ -124,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.className = 'session-row';
                 tr.dataset.index = idx;
                 
-                // ❗ M/D 시간 형식으로 날짜를 표시하도록 수정했습니다.
                 const formatMDTime = (date) => {
                     const month = date.getMonth() + 1;
                     const day = date.getDate();
@@ -133,21 +128,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 const startTimeString = formatMDTime(session.start);
                 const endTimeString = formatMDTime(session.end);
-    
+
                 tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${idx + 1}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${startTimeString}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${endTimeString}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${duration}</td>`;
                 sessionTableBody.appendChild(tr);
             });
         } else {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
-    
-        // 3. 나머지 정보 표시
+
         document.getElementById('session-label').textContent = `생직 시간 (총 ${totalMinutes}분)`;
         document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
         document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${coinsSpent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
     }
 
-    // ❗ 정렬 및 아이콘 표시 기능이 추가된 상세 정보 토글 함수
     function toggleSessionDetails(event) {
         const row = event.target.closest('.session-row');
         if (!row) return;
@@ -166,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const session = fullResultData.sessions[sessionIndex];
         const sessionItems = session.items;
         
-        // 현재 직업의 아이템 목록을 기준으로 정렬된 아이템만 필터링
         const sortedSessionItems = JOB_DATA[currentJob].items.filter(itemName => sessionItems[itemName] > 0);
 
         let detailsHtml = `<div class="bg-gray-50/50 p-4">`;
@@ -202,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sessionTableBody.addEventListener('click', toggleSessionDetails);
 
-    // --- 페이지 로드 시 실행 ---
     const resultDataJSON = sessionStorage.getItem('analysisResult');
 
     if (resultDataJSON && currentJob) {
