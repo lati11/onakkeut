@@ -88,14 +88,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
 
     function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount } = results;
+        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates } = results;
         const currentJobData = JOB_DATA[jobName];
-
-        const formatDate = (date) => date.toLocaleString('sv-SE').replace(/-/g, '.');
-        const titleDateString = firstLogTime ? `${formatDate(new Date(firstLogTime))} ~ ${formatDate(new Date(lastLogTime))}` : "";
+    
+        // --- 1. 페이지 제목 설정 ---
+        const titleDateString = (() => {
+            if (!uniqueDates || uniqueDates.length === 0) return "";
+            const formattedDates = uniqueDates.map(d => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1));
+            if (formattedDates.length > 2) {
+                return formattedDates.join(', ');
+            } else {
+                const start = firstLogTime ? new Date(firstLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
+                const end = lastLogTime ? new Date(lastLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
+                if (start === end) return start;
+                return start && end ? `${start} ~ ${end}` : "분석 결과";
+            }
+        })();
+    
         document.getElementById('page-title').innerHTML = `${currentJobData.title} <span class="text-base text-gray-500 font-normal">${titleDateString}</span>`;
         document.title = `${currentJobData.title} - ${titleDateString}`;
-
+    
+        // --- 2. 전체 부산물 목록 표시 ---
         const itemTableBody = document.getElementById('item-table-body');
         itemTableBody.innerHTML = '';
         const sortedTotalItems = currentJobData.items.filter(name => totalItemCounts[name] > 0);
@@ -103,17 +116,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sortedTotalItems.length > 0) {
             sortedTotalItems.forEach(name => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-8 w-8 object-contain align-middle" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4 flex items-center"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
+                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-6 w-6"><img class="h-6 w-6 object-contain" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4 flex items-center"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
                 itemTableBody.appendChild(tr);
             });
         } else {
             itemTableBody.innerHTML = `<tr><td colspan="2" class="text-center px-6 py-4 text-gray-500">획득한 부산물이 없습니다.</td></tr>`;
         }
-
+    
+        // --- 3. 세션 목록 표시 ---
         sessionTableBody.innerHTML = '';
         let totalMinutes = 0;
         const parsedSessions = sessions.map(s => ({ ...s, start: new Date(s.start), end: new Date(s.end) }));
-
+    
         if (parsedSessions.length > 0) {
             parsedSessions.forEach((session, idx) => {
                 const duration = Math.max(1, Math.floor((session.end.getTime() - session.start.getTime()) / 60000));
@@ -123,27 +137,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.dataset.index = idx;
                 
                 const formatMDTime = (date) => {
-                    const month = date.getMonth() + 1;
-                    const day = date.getDate();
-                    const time = date.toLocaleTimeString('ko-KR');
-                    return `${month}/${day} ${time}`;
+                    if (!(date instanceof Date) || isNaN(date)) return '유효하지 않은 시간';
+                    return `${date.getMonth() + 1}/${date.getDate()} ${date.toLocaleTimeString('ko-KR')}`;
                 };
                 const startTimeString = formatMDTime(session.start);
                 const endTimeString = formatMDTime(session.end);
-
+    
                 tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${idx + 1}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${startTimeString}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${endTimeString}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${duration}</td>`;
                 sessionTableBody.appendChild(tr);
             });
         } else {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
-
+    
+        // --- 4. 기타 정보 표시 ---
         const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
         document.getElementById('session-label').innerHTML = `생직 시간 (총 ${totalMinutes}분)${rankingPointGainText}`;
+        
+        if (jobName === "어부") {
+            document.getElementById('fishing-info-box').classList.remove('hidden');
+            document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">오늘 만난 게 :</span> ${crabCount} 마리`;
+            document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">오늘 진행한 미니게임 :</span> ${minigameCount} 번`;
+        }
+        
         document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
         document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${coinsSpent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
-        document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">만난 게 :</span> ${crabCount} 마리`;
-        document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">진행한 미니게임 :</span> ${minigameCount} 번`;
     }
 
     function toggleSessionDetails(event) {
