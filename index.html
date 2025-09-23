@@ -106,36 +106,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
-                        
+    
                         let text;
                         try {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
                             text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
                         }
-                        
+    
                         const lines = text.split(/\r?\n/);
     
-                        // 생활랭킹 점수 계산
                         const rankingPointRegex = /\[생활 \S+ ([\d,]+\.\d)\]/;
                         let firstPoint = null, lastPoint = null;
                         for(const line of lines){
                             const match = line.match(rankingPointRegex);
-                            if(match){
+                            if(match && match[1]){ // ❗ 안전장치 추가
                                 const point = parseFloat(match[1].replace(/,/g, ''));
-                                if(firstPoint === null) firstPoint = point;
-                                lastPoint = point;
+                                if(!isNaN(point)) {
+                                    if(firstPoint === null) firstPoint = point;
+                                    lastPoint = point;
+                                }
                             }
                         }
-                        if(firstPoint !== null && lastPoint !== null){
+                        if(firstPoint !== null && lastPoint !== null && lastPoint >= firstPoint){
                             totalRankingPointGain += (lastPoint - firstPoint);
                         }
     
-                        // 날짜 추출
                         const dateRegex = /(\d{4}-\d{2}-\d{2})/;
                         let logDate = null;
                         const match = file.name.match(dateRegex);
-                        if (match) {
+                        if (match && match[1]) {
                             logDate = match[1];
                         } else {
                             const today = new Date();
@@ -175,67 +175,71 @@ document.addEventListener('DOMContentLoaded', () => {
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
-        
+    
+        const allDates = new Set();
+    
         logs.forEach((datedLine, i) => {
             if (!datedLine || !datedLine.includes('|')) return;
             const [logDate, currentLine] = datedLine.split('|');
-            let earnedMatch = currentLine.match(coinEarnedPattern);
-            if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
-            if (crabPattern.test(currentLine)) {
-            crabCount++;
+    
+            if (crabPattern.test(currentLine)) crabCount++;
+            if (minigamePattern.test(currentLine)) minigameCount++;
+    
+            const earnedMatch = currentLine.match(coinEarnedPattern);
+            if (earnedMatch && earnedMatch[1]) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
+    
+            const spentMatch = currentLine.match(coinSpentPattern);
+            if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
+    
+            let foundRankingPoints = false;
+            if (currentLine.includes("생활랭킹 포인트")) {
+                 for (let j = 1; j < 5; j++) {
+                    if ((i - j) >= 0 && logs[i-j]) {
+                        const prevLine = logs[i-j].split('|')[1] || "";
+                        if (prevLine.match(acquisitionPattern)) {
+                            foundRankingPoints = true;
+                            break;
+                        }
+                    }
+                }
             }
-            if (minigamePattern.test(currentLine)) {
-                minigameCount++;
-            }
-            let spentMatch = currentLine.match(coinSpentPattern);
-            if (spentMatch) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
-            let itemMatch = currentLine.match(acquisitionPattern);
-            if (itemMatch) { // ❗ itemMatch를 독립적인 if 블록으로 분리합니다.
-                const rawItem = itemMatch[1].trim();
-                const count = parseInt(itemMatch[2], 10);
-                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
-                if (itemList.includes(itemName)) {
-                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
-                    if (currentSession) { // 세션이 진행 중일 때만 세션 아이템으로 추가
+    
+            if (foundRankingPoints) {
+                const itemMatch = logs[i-1].split('|')[1].match(acquisitionPattern);
+                const timeMatch = logs[i-1].split('|')[1].match(/^\[(\d{2}:\d{2}:\d{2})\]/);
+    
+                if (itemMatch && itemMatch[1] && timeMatch && timeMatch[1]) {
+                    const timeStr = timeMatch[1];
+                    const timestamp = new Date(`${logDate}T${timeStr}`);
+    
+                    if (!(timestamp instanceof Date) || isNaN(timestamp)) return; 
+    
+                    allDates.add(logDate);
+                    if (firstLogTime === null || timestamp < firstLogTime) firstLogTime = timestamp;
+                    if (lastLogTime === null || timestamp > lastLogTime) lastLogTime = timestamp;
+    
+                    if (currentSession === null) {
+                        currentSession = { start: timestamp, end: timestamp, items: {} };
+                        sessions.push(currentSession);
+                    } else if (lastTime && (timestamp.getTime() - lastTime.getTime()) / 1000 > 300) {
+                        currentSession = { start: timestamp, end: timestamp, items: {} };
+                        sessions.push(currentSession);
+                    }
+                    currentSession.end = timestamp;
+                    lastTime = timestamp;
+    
+                    const rawItem = itemMatch[1].trim();
+                    const count = parseInt(itemMatch[2], 10);
+                    const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                    if (itemList.includes(itemName)) {
+                        totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
                         currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
                     }
                 }
             }
-            let foundRankingPoints = false;
-            for (let j = 1; j < 5; j++) {
-                if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) {
-                    foundRankingPoints = true;
-                    break;
-                }
-            }
-            if (foundRankingPoints) {
-                const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
-                if (!timeMatch) return;
-                const timeStr = timeMatch[1];
-                const timestamp = new Date(`${logDate}T${timeStr}`);
-                
-                if (firstLogTime === null) firstLogTime = timestamp;
-                lastLogTime = timestamp;
-
-                if (currentSession === null) {
-                    currentSession = { start: timestamp, end: timestamp, items: {} };
-                    sessions.push(currentSession);
-                } else if (lastTime && (timestamp.getTime() - lastTime.getTime()) / 1000 > 300) {
-                    currentSession = { start: timestamp, end: timestamp, items: {} };
-                    sessions.push(currentSession);
-                }
-                currentSession.end = timestamp;
-                lastTime = timestamp;
-                const rawItem = itemMatch[1].trim();
-                const count = parseInt(itemMatch[2], 10);
-                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
-                if (itemList.includes(itemName)) {
-                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
-                    currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
-                }
-            }
         });
-        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount };
+        const uniqueDates = Array.from(allDates).sort();
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, uniqueDates };
     }
     
     analyzeButton.addEventListener('click', async () => {
