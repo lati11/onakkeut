@@ -18,7 +18,6 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
-        .drop-zone-active { border-style: dashed !important; border-color: #3b82f6 !important; background-color: #eff6ff !important; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
@@ -36,7 +35,7 @@
             <div class="p-6 border-b">
                 <h2 id="modal-title" class="text-2xl font-bold text-gray-800">분석기</h2>
             </div>
-            <div id="drop-zone" class="p-6 overflow-y-auto flex-grow text-center border-2 border-transparent transition-colors duration-200">
+            <div class="p-6 overflow-y-auto flex-grow text-center">
                 <div class="mb-6 max-w-md mx-auto">
                     <label class="block text-gray-700 text-sm font-bold mb-2 text-left" for="log-file-input">
                         로그 파일 선택 (.log / .gz) - 여러 개 선택 가능
@@ -45,7 +44,7 @@
                         <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
                         </svg>
-                        <span id="file-chosen" class="truncate">파일을 선택하거나 여기에 드롭하세요</span>
+                        <span id="file-chosen" class="truncate">파일을 선택하세요</span>
                         <input type='file' id="log-file-input" class="hidden" accept=".log,.gz" multiple/>
                     </label>
                 </div>
@@ -78,30 +77,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('log-file-input');
     const fileChosenLabel = document.getElementById('file-chosen');
     const modalTitle = document.getElementById('modal-title');
-    const dropZone = document.getElementById('drop-zone');
     
     function createMainMenu() { const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
-    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); resetFileInput(); }
+    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하세요'; loadingSpinner.classList.add('hidden'); }
     function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
-    function resetFileInput() { fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하거나 여기에 드롭하세요'; loadingSpinner.classList.add('hidden'); }
 
-    function handleFiles(files) {
-        logFiles = Array.from(files);
+    fileInput.addEventListener('change', (e) => {
+        logFiles = Array.from(e.target.files);
         if (logFiles.length > 1) {
             fileChosenLabel.textContent = `${logFiles.length}개의 파일이 선택됨`;
         } else if (logFiles.length === 1) {
             fileChosenLabel.textContent = logFiles[0].name;
         } else {
-            fileChosenLabel.textContent = '파일을 선택하거나 여기에 드롭하세요';
+            fileChosenLabel.textContent = '파일을 선택하세요';
         }
-    }
+    });
 
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-zone-active'); });
-    ['dragleave', 'dragend', 'drop'].forEach(type => { dropZone.addEventListener(type, (e) => { e.preventDefault(); dropZone.classList.remove('drop-zone-active'); }); });
-    dropZone.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFiles(e.dataTransfer.files); } });
-    
-    // 원래의 안정적인 파일 읽기 및 결합 함수
     async function readAndCombineFiles(files) {
         const fileReadPromises = files.map(file => {
             return new Promise((resolve, reject) => {
@@ -134,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return allTexts.join('\n');
     }
 
-    // 생활랭킹 기능이 추가된 분석 함수
     async function analyzeLog(logsText, itemList, logDate) {
         const logs = logsText.split(/\r?\n/);
         const totalItemCounts = {};
@@ -145,16 +135,20 @@ document.addEventListener('DOMContentLoaded', () => {
         let firstLogTime = null;
         let lastLogTime = null; 
         let coinsEarned = 0.0, coinsSpent = 0.0, crabCount = 0, minigameCount = 0;
-        let firstRankingPoint = null, lastRankingPoint = null;
+        
+        // 생활랭킹 포인트 계산을 위한 변수 추가
+        let firstRankingPoint = null;
+        let lastRankingPoint = null;
+        const rankingPointPattern = /현재 생활랭킹: ([\d,]+)점/;
 
         const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
         const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/;
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
-        const rankingPointPattern = /현재 생활랭킹: ([\d,]+)점/;
-
+        
         logs.forEach((currentLine, i) => {
+            // ★★★ 생활랭킹 점수 찾기 (추가된 부분) ★★★
             const rankMatch = currentLine.match(rankingPointPattern);
             if (rankMatch) {
                 const currentPoints = parseInt(rankMatch[1].replace(/,/g, ''), 10);
@@ -165,7 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastRankingPoint = currentPoints;
                 }
             }
-
+            
+            // --- 기존 분석 로직 (원본과 동일) ---
             let earnedMatch = currentLine.match(coinEarnedPattern);
             if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
             if (crabPattern.test(currentLine)) crabCount++;
@@ -176,21 +171,21 @@ document.addEventListener('DOMContentLoaded', () => {
             let itemMatch = currentLine.match(acquisitionPattern);
             if (!itemMatch) return;
 
-            let foundRankingPointsMsg = false;
+            let foundRankingPoints = false;
             for (let j = 1; j < 5; j++) {
                 if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) {
-                    foundRankingPointsMsg = true;
+                    foundRankingPoints = true;
                     break;
                 }
             }
 
-            if (foundRankingPointsMsg) {
+            if (foundRankingPoints) {
                 const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
                 if (!timeMatch) return;
                 
                 const timeStr = timeMatch[1];
                 const timestamp = new Date(`${logDate}T${timeStr}`);
-
+                
                 if (firstLogTime === null) firstLogTime = timestamp;
                 lastLogTime = timestamp;
 
@@ -214,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // ★★★ 생활랭킹 최종 증가량 계산 (추가된 부분) ★★★
         let totalRankingPointsGained = 0;
         if (firstRankingPoint !== null && lastRankingPoint !== null && lastRankingPoint > firstRankingPoint) {
             totalRankingPointsGained = lastRankingPoint - firstRankingPoint;
@@ -241,7 +237,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!logDate) {
                 const today = new Date();
-                logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                logDate = `${year}-${month}-${day}`;
             }
 
             const combinedLogs = await readAndCombineFiles(logFiles);
