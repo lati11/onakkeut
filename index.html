@@ -101,15 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const buffer = new Uint8Array(event.target.result);
                         let dataToDecode = buffer;
-
+    
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
                         
-                        let text;
-                        try {
-                            text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
-                        } catch (e) {
+                        // 1. UTF-8로 먼저 시도합니다.
+                        let text = new TextDecoder('utf-8').decode(dataToDecode);
+    
+                        // 2. 만약 글자가 깨지는 현상()이 발생하면 CP949로 다시 시도합니다.
+                        if (text.includes('')) {
+                            console.log(`UTF-8 decoding resulted in garbled text for ${file.name}, trying CP949...`);
                             text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
                         }
                         resolve(text);
