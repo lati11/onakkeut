@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
 
-        document.getElementById('session-label').textContent = `생직 시간 (총 ${totalMinutes}분) - 각 행을 클릭하여 세션별 부산물 확인`;
+        document.getElementById('session-label').textContent = `생직 시간 (총 ${totalMinutes}분)`;
         document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
         document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${coinsSpent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
     }
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 현재 직업의 아이템 목록을 기준으로 정렬된 아이템만 필터링
         const sortedSessionItems = JOB_DATA[currentJob].items.filter(itemName => sessionItems[itemName] > 0);
 
-        let detailsHtml = `<div class="bg-gray-50/50 p-4"><h4 class="text-base font-bold mb-3 text-center text-gray-800">세션 ${sessionIndex + 1} 상세 부산물</h4>`;
+        let detailsHtml = `<div class="bg-gray-50/50 p-4">`;
         
         if (sortedSessionItems.length > 0) {
             detailsHtml += `<table class="min-w-full bg-white details-table"><tbody>`;
