@@ -151,37 +151,55 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentSession = null;
         let lastTime = null;
         let coinsEarned = 0.0, coinsSpent = 0.0, crabCount = 0, minigameCount = 0;
+        let totalRankingPointsGained = 0; // 생활랭킹 총합
 
         const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
         const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/;
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
+        const rankingPointPattern = /현재 생활랭킹: ([\d,]+)점/; // 생활랭킹 점수 패턴
 
         for (const chunk of logChunks) {
             const logs = chunk.content.split(/\r?\n/);
+            let firstRankingPoint = null;
+            let lastRankingPoint = null;
+
             for (let i = 0; i < logs.length; i++) {
                 const currentLine = logs[i];
+                
+                // 생활랭킹 점수 찾기
+                const rankMatch = currentLine.match(rankingPointPattern);
+                if (rankMatch) {
+                    const currentPoints = parseInt(rankMatch[1].replace(/,/g, ''), 10);
+                    if (!isNaN(currentPoints)) {
+                        if (firstRankingPoint === null) {
+                            firstRankingPoint = currentPoints;
+                        }
+                        lastRankingPoint = currentPoints;
+                    }
+                }
 
+                // 기존 분석 로직
                 let earnedMatch = currentLine.match(coinEarnedPattern);
                 if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
                 if (crabPattern.test(currentLine)) crabCount++;
                 if (minigamePattern.test(currentLine)) minigameCount++;
                 let spentMatch = currentLine.match(coinSpentPattern);
-                if (spentMatch) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
+                if (spentMatch) spentMatch += parseFloat(spentMatch[1].replace(/,/g, ''));
                 
                 let itemMatch = currentLine.match(acquisitionPattern);
                 if (!itemMatch) continue;
 
-                let foundRankingPoints = false;
+                let foundRankingPointsMsg = false;
                 for (let j = 1; j < 5; j++) {
                     if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) {
-                        foundRankingPoints = true;
+                        foundRankingPointsMsg = true;
                         break;
                     }
                 }
 
-                if (foundRankingPoints) {
+                if (foundRankingPointsMsg) {
                     const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
                     if (!timeMatch) continue;
                     
@@ -207,8 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
+            // 현재 파일(청크)의 생활랭킹 증가량 계산
+            if (firstRankingPoint !== null && lastRankingPoint !== null && lastRankingPoint > firstRankingPoint) {
+                totalRankingPointsGained += (lastRankingPoint - firstRankingPoint);
+            }
         }
-        return { totalItemCounts, sessions, coinsEarned, coinsSpent, crabCount, minigameCount };
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, crabCount, minigameCount, totalRankingPointsGained };
     }
     
     analyzeButton.addEventListener('click', async () => {
@@ -224,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
-            window.open('results.html', '_blank');
+            window.open('results.html', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
             closeModal();
         } catch (error) {
             console.error(error);
