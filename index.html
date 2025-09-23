@@ -157,8 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return { allDatedLines, totalRankingPointGain };
     }
 
-    async function analyzeLog(logsText, itemList, logDate) {
-        const logs = logsText.split(/\r?\n/);
+    async function analyzeLog(datedLogs, itemList)
+        const logs = datedLogs;
         const totalItemCounts = {};
         itemList.forEach(item => totalItemCounts[item] = 0);
         const sessions = [];
@@ -176,7 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
         
-        logs.forEach((currentLine, i) => {
+        logs.forEach((datedLine, i) => {
+            if (!datedLine || !datedLine.includes('|')) return;
+            const [logDate, currentLine] = datedLine.split('|');
             let earnedMatch = currentLine.match(coinEarnedPattern);
             if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
             if (crabPattern.test(currentLine)) {
