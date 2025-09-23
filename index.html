@@ -20,11 +20,10 @@
 
     <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm text-center">
         <div class="w-full text-left mb-4">
-            <h1 class="text-xl font-bold text-gray-800">오낚끝 🎣</h1>
+            <h1 class="text-3xl font-bold text-gray-800">오낚끝 🎣</h1>
         </div>
         <h2 class="text-2xl font-bold mb-8 text-gray-700">오늘의 직업은?</h2>
-        <div id="job-buttons" class="space-y-4">
-            </div>
+        <div id="job-buttons" class="space-y-4"></div>
     </div>
 
     <div id="analyzer-modal" class="fixed inset-0 modal-bg items-center justify-center p-4 hidden">
@@ -32,21 +31,19 @@
             <div class="p-6 border-b">
                 <h2 id="modal-title" class="text-2xl font-bold text-gray-800">분석기</h2>
             </div>
-            
             <div class="p-6 overflow-y-auto flex-grow text-center">
                 <div class="mb-6 max-w-md mx-auto">
                     <label class="block text-gray-700 text-sm font-bold mb-2 text-left" for="log-file-input">
-                        로그 파일 선택 (.log / .gz)
+                        로그 파일 선택 (.log / .gz) - 여러 개 선택 가능
                     </label>
                     <label class="w-full flex items-center px-4 py-2 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
                         </svg>
                         <span id="file-chosen" class="truncate">파일을 선택하세요</span>
-                        <input type='file' id="log-file-input" class="hidden" accept=".log,.gz"/>
+                        <input type='file' id="log-file-input" class="hidden" accept=".log,.gz" multiple/>
                     </label>
                 </div>
-                
                 <div id="loading-spinner" class="text-center my-8 hidden">
                     <svg class="animate-spin h-10 w-10 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -55,26 +52,20 @@
                     <p class="mt-2 text-gray-600">로그 파일을 분석 중입니다...</p>
                     <p id="analysis-status" class="mt-1 text-sm text-gray-500"></p>
                 </div>
-                </div>
-
+            </div>
             <div class="p-4 bg-gray-50 border-t text-right space-x-2">
-                <button id="analyze-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">
-                    확인
-                </button>
-                <button id="close-modal-button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">
-                    닫기
-                </button>
+                <button id="analyze-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">확인</button>
+                <button id="close-modal-button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">닫기</button>
             </div>
         </div>
     </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 데이터 (이 부분은 results.html에도 동일하게 필요합니다) ---
     const JOB_DATA = { "어부": { "title": "오낚끝 (어부)", "menu_icon": "menuicon1.png", "items": [ "물의 원소 가루", "물의 원소 조각", "물의 원소 정수", "진주", "행운의 편지", "해적의 보물상자", "마녀의 눈물", "용왕의 왕관", "실종된 잠수부 헬멧", "고대 물의 영혼석", "물의 정령의 유리구두", "고급 어부 상자" ] }, "광부": { "title": "오광끝 (광부)", "menu_icon": "menuicon2.png", "items": [ "땅의 원소 가루", "땅의 원소 조각", "땅의 원소 정수", "가넷", "아쿠아마린", "토파즈", "페리도트", "암모나이트 화석", "거미 화석", "물고기 화석", "공룡알 화석", "솔라이트 원석", "실종된 광부의 표본샘플", "고대의 피라미드 큐브", "대지의 정령의 호박화석", "고급 광부 상자" ] }, "농부": { "title": "오농끝 (농부)", "menu_icon": "menuicon3.png", "items": [ "불의 원소 가루", "불의 원소 조각", "불의 원소 정수", "애벌레", "무당벌레", "메뚜기", "딱정벌레", "밀 번들", "대나무 번들", "비트 번들", "감자 번들", "갈색 버섯 번들", "빨간 버섯 번들", "선인장 번들", "당근 번들", "후렴화 번들", "코코아콩 번들", "네더와트 번들", "사탕수수 번들", "켈프 번들", "수박 조각 번들", "달콤한 열매 번들", "개량된 목화솜", "실종된 농부의 땅문서", "고대식물의 모종", "불의 정령의 꽃 화관", "고급 농부 상자" ] }, "나무꾼": { "title": "오나끝 (나무꾼)", "menu_icon": "menuicon4.png", "items": [ "바람의 원소 가루", "바람의 원소 조각", "바람의 원소 정수", "나무껍질", "고목나무 수액", "맨드레이크", "바오밥나무 뿌리", "송이버섯", "불로초", "설삼", "황금버섯", "원시부족 가면", "실종된 나무꾼의 장갑", "고대 정령의 메아리", "나무의 정령의 연꽃 찻잔", "고급 나무꾼 상자" ] }, "사냥꾼": { "title": "오냥끝 (사냥꾼)", "menu_icon": "menuicon5.png", "items": [ "영혼의 원소 가루", "영혼의 원소 조각", "영혼의 원소 정수", "짐승의 송곳니", "짐승의 가죽", "짐승의 꼬리", "독침", "용의 피", "대지의 결정체", "부드러운 깃털", "부드러운 털", "버섯 고기", "바람의 결정체", "물방울의 별", "공허의 파동", "돌고래의 마음", "물의 결정체", "넘실거리는 불꽃", "가스트의 파편", "불의 결정체", "더러운 천", "엔더 진주 가루", "사악한 기운", "수상한 주머니", "타락한 월계수 잎", "타락한 요정의 가루", "어둠의 결정체", "미스틱 코어", "갈비뼈", "요정의 가루", "빛의 결정체", "신비한 동물 가죽", "실종된 사냥꾼 고글", "고대 맘모스 뿔", "어둠의 정령의 부러진 스태프", "고급 사냥꾼 상자", "실", "안장", "고사리", "슬라임볼", "깃털", "점토 덩이", "마른 덤불", "발광석 가루", "레드스톤 가루", "뼈다귀", "화약", "바다의 심장", "인갑", "전달체", "프리즈머린 수정", "프리즈머린 조각", "먹물 주머니", "발광 먹물 주머니", "젖은 스펀지", "가죽", "화염구", "위더 장미", "블레이즈 막대기", "벌레 먹은 돌", "엔더 진주", "셜커 껍데기", "거미줄" ] } };
 
     let currentJob = null;
-    let logFile = null;
+    let logFiles = [];
 
     const modal = document.getElementById('analyzer-modal');
     const analyzeButton = document.getElementById('analyze-button');
@@ -83,46 +74,121 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileChosenLabel = document.getElementById('file-chosen');
     const modalTitle = document.getElementById('modal-title');
     
-    function createMainMenu() {
-        const jobButtonsContainer = document.getElementById('job-buttons');
-        const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"];
-        jobOrder.forEach(jobName => {
-            const data = JOB_DATA[jobName];
-            const btn = document.createElement('button');
-            btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200";
-            btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`;
-            btn.onclick = () => openModal(jobName);
-            jobButtonsContainer.appendChild(btn);
-        });
-    }
+    function createMainMenu() { /* ... unchanged ... */ const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
+    function openModal(jobName) { /* ... unchanged ... */ currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하세요'; loadingSpinner.classList.add('hidden'); }
+    function closeModal() { /* ... unchanged ... */ modal.classList.add('hidden'); modal.classList.remove('flex'); }
 
-    function openModal(jobName) {
-        currentJob = jobName;
-        modalTitle.textContent = JOB_DATA[jobName].title;
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        // Reset modal state
-        fileInput.value = '';
-        logFile = null;
-        fileChosenLabel.textContent = '파일을 선택하세요';
-        loadingSpinner.classList.add('hidden');
-    }
-
-    function closeModal() {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-
+    // 다중 파일 선택 처리
     fileInput.addEventListener('change', (e) => {
-        logFile = e.target.files[0];
-        fileChosenLabel.textContent = logFile ? logFile.name : '파일을 선택하세요';
+        logFiles = Array.from(e.target.files);
+        if (logFiles.length > 1) {
+            fileChosenLabel.textContent = `${logFiles.length}개의 파일이 선택됨`;
+        } else if (logFiles.length === 1) {
+            fileChosenLabel.textContent = logFiles[0].name;
+        } else {
+            fileChosenLabel.textContent = '파일을 선택하세요';
+        }
     });
 
-    async function analyzeLog(file, itemList) { /* ... analyzeLog function is unchanged ... */ return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (event) => { try { const fileContent = event.target.result; let logsText; if (file.name.endsWith('.gz')) { const inflated = pako.inflate(new Uint8Array(fileContent)); const encodings = ["utf-8", "cp949", "latin-1"]; for (const enc of encodings) { try { logsText = new TextDecoder(enc, { fatal: true }).decode(inflated); break; } catch (e) { } } if (!logsText) { logsText = new TextDecoder('utf-8', { fatal: false }).decode(inflated); } } else { logsText = new TextDecoder('utf-8', { fatal: false }).decode(fileContent); } const logs = logsText.split(/\r?\n/); const itemCounts = {}; itemList.forEach(item => itemCounts[item] = 0); const fishingSessions = []; let currentSessionStart = null; let lastTime = null; let coinsEarned = 0.0; let coinsSpent = 0.0; const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/; const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/; const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/; logs.forEach((currentLine, i) => { let earnedMatch = currentLine.match(coinEarnedPattern); if (earnedMatch) { coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, '')); } let spentMatch = currentLine.match(coinSpentPattern); if (spentMatch) { coinsSpent += parseFloat(spentMatch[1].replace(/,/g, '')); } let itemMatch = currentLine.match(acquisitionPattern); if (!itemMatch) return; let foundRankingPoints = false; for (let j = 1; j < 5; j++) { if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) { foundRankingPoints = true; break; } } if (foundRankingPoints) { const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/); if (!timeMatch) return; try { const timeStr = timeMatch[1]; const [hours, minutes, seconds] = timeStr.split(':').map(Number); const timestamp = new Date(); timestamp.setHours(hours, minutes, seconds, 0); const rawItem = itemMatch[1].trim(); const count = parseInt(itemMatch[2], 10); const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, ""); if (itemList.includes(itemName)) { itemCounts[itemName] += count; } if (currentSessionStart === null) { currentSessionStart = timestamp; } else if (lastTime && (timestamp.getTime() - lastTime.getTime()) / 1000 > 300) { fishingSessions.push({ start: lastTime, end: timestamp }); currentSessionStart = timestamp; } lastTime = timestamp; } catch (e) { console.error("Error parsing log line:", e); } } }); if (currentSessionStart && lastTime && lastTime > currentSessionStart) { fishingSessions.push({ start: currentSessionStart, end: lastTime }); } resolve({ itemCounts, fishingSessions, coinsEarned, coinsSpent }); } catch (error) { reject(error); } }; reader.onerror = reject; reader.readAsArrayBuffer(file); }); }
+    // 여러 파일을 읽어 하나의 텍스트로 합치는 함수
+    async function readAndCombineFiles(files) {
+        const fileReadPromises = files.map(file => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const buffer = event.target.result;
+                        let text;
+                        if (file.name.endsWith('.gz')) {
+                            const inflated = pako.inflate(new Uint8Array(buffer));
+                            const decoders = [new TextDecoder('utf-8', { fatal: true }), new TextDecoder('cp949', { fatal: true }), new TextDecoder('latin-1')];
+                            for (const decoder of decoders) {
+                                try { text = decoder.decode(inflated); break; } catch (e) {}
+                            }
+                            if (!text) text = new TextDecoder().decode(inflated); // Fallback
+                        } else {
+                            text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+                        }
+                        resolve(text);
+                    } catch (error) { reject(error); }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        });
+        const allTexts = await Promise.all(fileReadPromises);
+        return allTexts.join('\n');
+    }
+
+    // 세션별 아이템 집계를 위해 수정된 분석 함수
+    async function analyzeLog(logsText, itemList) {
+        const logs = logsText.split(/\r?\n/);
+        const totalItemCounts = {};
+        itemList.forEach(item => totalItemCounts[item] = 0);
+        
+        const sessions = [];
+        let currentSession = null;
+        let lastTime = null;
+        let coinsEarned = 0.0;
+        let coinsSpent = 0.0;
+
+        const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
+        const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/;
+        const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
+
+        logs.forEach((currentLine, i) => {
+            let earnedMatch = currentLine.match(coinEarnedPattern);
+            if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
+            
+            let spentMatch = currentLine.match(coinSpentPattern);
+            if (spentMatch) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
+
+            let itemMatch = currentLine.match(acquisitionPattern);
+            if (!itemMatch) return;
+
+            let foundRankingPoints = false;
+            for (let j = 1; j < 5; j++) {
+                if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) {
+                    foundRankingPoints = true;
+                    break;
+                }
+            }
+
+            if (foundRankingPoints) {
+                const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
+                if (!timeMatch) return;
+
+                const timeStr = timeMatch[1];
+                const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+                const timestamp = new Date();
+                timestamp.setHours(hours, minutes, seconds, 0);
+
+                // 세션 관리
+                if (currentSession === null) {
+                    currentSession = { start: timestamp, end: timestamp, items: {} };
+                    sessions.push(currentSession);
+                } else if (lastTime && (timestamp.getTime() - lastTime.getTime()) / 1000 > 300) {
+                    currentSession = { start: timestamp, end: timestamp, items: {} };
+                    sessions.push(currentSession);
+                }
+                currentSession.end = timestamp;
+                lastTime = timestamp;
+
+                // 아이템 집계
+                const rawItem = itemMatch[1].trim();
+                const count = parseInt(itemMatch[2], 10);
+                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                if (itemList.includes(itemName)) {
+                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                    currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
+                }
+            }
+        });
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent };
+    }
     
-    // "확인" 버튼 클릭 시의 로직 수정
     analyzeButton.addEventListener('click', async () => {
-        if (!logFile || !currentJob) {
+        if (logFiles.length === 0 || !currentJob) {
             alert('로그 파일을 먼저 선택해주세요.');
             return;
         }
@@ -131,21 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('analysis-status').textContent = '분석이 완료되면 새 창이 열립니다.';
 
         try {
-            const results = await analyzeLog(logFile, JOB_DATA[currentJob].items);
+            const combinedLogs = await readAndCombineFiles(logFiles);
+            const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items);
             
-            // 1. 결과를 JSON 문자열로 변환
-            const resultString = JSON.stringify(results);
-
-            // 2. sessionStorage에 결과와 직업 정보 저장
-            sessionStorage.setItem('analysisResult', resultString);
+            sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
             
-            // 3. results.html을 새 창으로 열기
-            const url = 'results.html';
-            const windowFeatures = 'width=900,height=800,scrollbars=yes,resizable=yes';
-            window.open(url, '_blank', windowFeatures);
-
-            closeModal(); // 성공적으로 새 창을 연 후 모달 닫기
+            window.open('results.html', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
+            closeModal();
 
         } catch (error) {
             console.error(error);
@@ -156,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // 초기화
     createMainMenu();
     document.getElementById('close-modal-button').addEventListener('click', closeModal);
 });
