@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/iconv-lite/0.6.3/iconv-lite.min.js"></script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;5.00;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
         .modal-bg { background-color: rgba(0,0,0,0.5); }
@@ -93,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ❗ 2. 가장 안정적인 버전의 파일 읽기 및 인코딩 처리 함수
     async function readAndCombineFiles(files) {
         const fileReadPromises = files.map(file => {
             return new Promise((resolve, reject) => {
@@ -109,10 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         let text;
                         try {
-                            // UTF-8로 엄격하게 변환 시도 (실패 시 catch로 이동)
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
-                            // UTF-8 실패 시 CP949로 변환 (window.Buffer와 window.iconv 사용)
                             text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
                         }
                         resolve(text);
@@ -162,6 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeStr = timeMatch[1];
                 const timestamp = new Date(`${logDate}T${timeStr}`);
                 
+                if (!(timestamp instanceof Date) || isNaN(timestamp)) {
+                    return; 
+                }
+
                 if (firstLogTime === null) firstLogTime = timestamp;
                 lastLogTime = timestamp;
 
@@ -192,9 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ❗ 3. 분석 시작 전 라이브러리가 로드되었는지 최종 확인
-        if (typeof window.iconv === 'undefined' || typeof window.Buffer === 'undefined') {
-            alert('분석 라이브러리를 불러오는 데 실패했습니다. 인터넷 연결을 확인하고 잠시 후 다시 시도해주세요.');
+        if (typeof window.iconv === 'undefined' || typeof window.buffer === 'undefined') {
+            alert('분석 라이브러리를 불러오는 데 실패했습니다. 인터넷 연결을 확인하고 잠시 후 페이지를 새로고침(F5) 해주세요.');
             return;
         }
 
