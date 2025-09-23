@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sortedTotalItems.length > 0) {
             sortedTotalItems.forEach(name => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-6 w-6 rounded-full object-contain" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
+                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-8 w-8 rounded-full object-contain align-middle" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
                 itemTableBody.appendChild(tr);
             });
         } else {
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-6 py-3 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="flex-shrink-0 h-5 w-5">
-                                <img class="h-8 w-8 rounded-full object-contain" src="${imageUrl}" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';">
+                                <img class="h-8 w-8 rounded-full object-contain align-middle" src="${imageUrl}" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';">
                             </div>
                             <div class="ml-3">
                                 <div class="text-sm font-medium text-gray-900">${itemName}</div>
