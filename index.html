@@ -175,44 +175,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
-    
+        const timePattern = /^\[(\d{2}:\d{2}:\d{2})\]/;
+        
         const allDates = new Set();
     
         logs.forEach((datedLine, i) => {
             if (!datedLine || !datedLine.includes('|')) return;
             const [logDate, currentLine] = datedLine.split('|');
     
+            // --- 모든 종류의 로그에서 공통 정보 추출 ---
             if (crabPattern.test(currentLine)) crabCount++;
             if (minigamePattern.test(currentLine)) minigameCount++;
     
             const earnedMatch = currentLine.match(coinEarnedPattern);
             if (earnedMatch && earnedMatch[1]) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
-    
+            
             const spentMatch = currentLine.match(coinSpentPattern);
             if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
     
-            let foundRankingPoints = false;
-            if (currentLine.includes("생활랭킹 포인트")) {
+            // --- 아이템 획득 로그 처리 ---
+            const itemMatch = currentLine.match(acquisitionPattern);
+            if (itemMatch && itemMatch[1]) {
+                const rawItem = itemMatch[1].trim();
+                const count = parseInt(itemMatch[2], 10);
+                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                if (itemList.includes(itemName)) {
+                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                }
+            }
+    
+            // --- 세션 시간 기록 (생활랭킹 포인트 로그 기준) ---
+            let isActivityLine = false;
+            if(itemMatch) { // 아이템을 얻은 줄은 활동으로 간주
                  for (let j = 1; j < 5; j++) {
-                    if ((i - j) >= 0 && logs[i-j]) {
-                        const prevLine = logs[i-j].split('|')[1] || "";
-                        if (prevLine.match(acquisitionPattern)) {
-                            foundRankingPoints = true;
-                            break;
-                        }
+                    if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
+                        isActivityLine = true;
+                        break;
                     }
                 }
             }
     
-            if (foundRankingPoints) {
-                const itemMatch = logs[i-1].split('|')[1].match(acquisitionPattern);
-                const timeMatch = logs[i-1].split('|')[1].match(/^\[(\d{2}:\d{2}:\d{2})\]/);
-    
-                if (itemMatch && itemMatch[1] && timeMatch && timeMatch[1]) {
+            if (isActivityLine) {
+                const timeMatch = currentLine.match(timePattern);
+                if (timeMatch && timeMatch[1]) {
                     const timeStr = timeMatch[1];
                     const timestamp = new Date(`${logDate}T${timeStr}`);
-    
-                    if (!(timestamp instanceof Date) || isNaN(timestamp)) return; 
+                    
+                    if (!(timestamp instanceof Date) || isNaN(timestamp)) return;
     
                     allDates.add(logDate);
                     if (firstLogTime === null || timestamp < firstLogTime) firstLogTime = timestamp;
@@ -228,16 +237,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentSession.end = timestamp;
                     lastTime = timestamp;
     
-                    const rawItem = itemMatch[1].trim();
-                    const count = parseInt(itemMatch[2], 10);
-                    const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
-                    if (itemList.includes(itemName)) {
-                        totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                    // 세션별 아이템 기록
+                    if (itemMatch && itemList.includes(itemMatch[1].trim().replace(/^[^가-힣a-zA-Z0-9]*/, ""))) {
+                        const itemName = itemMatch[1].trim().replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                        const count = parseInt(itemMatch[2], 10);
                         currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
                     }
                 }
             }
         });
+    
         const uniqueDates = Array.from(allDates).sort();
         return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, uniqueDates };
     }
