@@ -42,7 +42,7 @@
                         로그 파일 선택 (.log / .gz) - 여러 개 선택 가능
                     </label>
                     <label class="w-full flex items-center px-4 py-2 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w.org/2000/svg" viewBox="0 0 20 20">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
                         </svg>
                         <span id="file-chosen" class="truncate">파일을 선택하거나 여기에 드롭하세요</span>
@@ -100,23 +100,14 @@ document.addEventListener('DOMContentLoaded', () => {
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-zone-active'); });
     ['dragleave', 'dragend', 'drop'].forEach(type => { dropZone.addEventListener(type, (e) => { e.preventDefault(); dropZone.classList.remove('drop-zone-active'); }); });
     dropZone.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFiles(e.dataTransfer.files); } });
-
-    async function processAndCombineFiles(files) {
+    
+    // 원래의 안정적인 파일 읽기 및 결합 함수
+    async function readAndCombineFiles(files) {
         const fileReadPromises = files.map(file => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
-                        const dateRegex = /(\d{4}-\d{2}-\d{2})/;
-                        const match = file.name.match(dateRegex);
-                        let logDate;
-                        if (match) {
-                            logDate = match[1];
-                        } else {
-                            const today = new Date();
-                            logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                        }
-
                         const buffer = new Uint8Array(event.target.result);
                         let dataToDecode = buffer;
 
@@ -130,36 +121,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         } catch (e) {
                             text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
                         }
-                        
-                        const lines = text.split(/\r?\n/);
-                        const processedLines = lines.map(line => {
-                            const timeMatch = line.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
-                            if (timeMatch) {
-                                return `[${logDate} ${timeMatch[1]}]${line.substring(timeMatch[0].length)}`;
-                            }
-                            return line;
-                        });
-                        resolve(processedLines.join('\n'));
-
+                        resolve(text);
                     } catch (error) {
-                        reject(new Error(`'${file.name}' 파일 처리 중 오류: ${error.message}`));
+                        reject(error);
                     }
                 };
-                reader.onerror = (e) => reject(new Error(`'${file.name}' 파일 읽기 실패`));
+                reader.onerror = reject;
                 reader.readAsArrayBuffer(file);
             });
         });
-        const allModifiedTexts = await Promise.all(fileReadPromises);
-        return allModifiedTexts.join('\n');
+        const allTexts = await Promise.all(fileReadPromises);
+        return allTexts.join('\n');
     }
 
-    async function analyzeLog(combinedLogText, itemList) {
-        const logs = combinedLogText.split(/\r?\n/);
+    // 생활랭킹 기능이 추가된 분석 함수
+    async function analyzeLog(logsText, itemList, logDate) {
+        const logs = logsText.split(/\r?\n/);
         const totalItemCounts = {};
         itemList.forEach(item => totalItemCounts[item] = 0);
         const sessions = [];
         let currentSession = null;
         let lastTime = null;
+        let firstLogTime = null;
+        let lastLogTime = null; 
         let coinsEarned = 0.0, coinsSpent = 0.0, crabCount = 0, minigameCount = 0;
         let firstRankingPoint = null, lastRankingPoint = null;
 
@@ -169,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
         const rankingPointPattern = /현재 생활랭킹: ([\d,]+)점/;
-        const timePattern = /^\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]/;
 
         logs.forEach((currentLine, i) => {
             const rankMatch = currentLine.match(rankingPointPattern);
@@ -202,11 +185,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (foundRankingPointsMsg) {
-                const timeMatch = currentLine.match(timePattern);
+                const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
                 if (!timeMatch) return;
                 
-                const timestamp = new Date(timeMatch[1].replace(' ', 'T'));
-                if (isNaN(timestamp.getTime())) return;
+                const timeStr = timeMatch[1];
+                const timestamp = new Date(`${logDate}T${timeStr}`);
+
+                if (firstLogTime === null) firstLogTime = timestamp;
+                lastLogTime = timestamp;
 
                 if (currentSession === null) {
                     currentSession = { start: timestamp, end: timestamp, items: {} };
@@ -232,8 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (firstRankingPoint !== null && lastRankingPoint !== null && lastRankingPoint > firstRankingPoint) {
             totalRankingPointsGained = lastRankingPoint - firstRankingPoint;
         }
-        
-        return { totalItemCounts, sessions, coinsEarned, coinsSpent, crabCount, minigameCount, totalRankingPointsGained };
+
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointsGained };
     }
     
     analyzeButton.addEventListener('click', async () => {
@@ -244,8 +230,22 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingSpinner.classList.remove('hidden');
         document.getElementById('analysis-status').textContent = '분석이 완료되면 새 창이 열립니다.';
         try {
-            const combinedLogs = await processAndCombineFiles(logFiles);
-            const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items);
+            const dateRegex = /(\d{4}-\d{2}-\d{2})/;
+            let logDate = null;
+            for (const file of logFiles) {
+                const match = file.name.match(dateRegex);
+                if (match) {
+                    logDate = match[1];
+                    break;
+                }
+            }
+            if (!logDate) {
+                const today = new Date();
+                logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            }
+
+            const combinedLogs = await readAndCombineFiles(logFiles);
+            const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items, logDate);
             
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
