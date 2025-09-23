@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return { allDatedLines, totalRankingPointGain };
     }
 
-    async function analyzeLog(datedLogs, itemList)
+    async function analyzeLog(datedLogs, itemList) {
         const logs = datedLogs;
         const totalItemCounts = {};
         itemList.forEach(item => totalItemCounts[item] = 0);
@@ -269,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('analysis-status').textContent = '';
         }
     });
-    
     createMainMenu();
     document.getElementById('close-modal-button').addEventListener('click', closeModal);
 });
