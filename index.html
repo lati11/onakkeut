@@ -134,13 +134,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastTime = null;
         let firstLogTime = null;
         let lastLogTime = null; 
-        let coinsEarned = 0.0, coinsSpent = 0.0, crabCount = 0, minigameCount = 0;
-        
-        // 생활랭킹 포인트 계산을 위한 변수 추가
-        let firstRankingPoint = null;
-        let lastRankingPoint = null;
-        const rankingPointPattern = /현재 생활랭킹: ([\d,]+)점/;
-
+        let coinsEarned = 0.0;
+        let coinsSpent = 0.0;
+        let crabCount = 0;
+        let minigameCount = 0;
         const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
         const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/;
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
@@ -148,29 +145,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
         
         logs.forEach((currentLine, i) => {
-            // ★★★ 생활랭킹 점수 찾기 (추가된 부분) ★★★
-            const rankMatch = currentLine.match(rankingPointPattern);
-            if (rankMatch) {
-                const currentPoints = parseInt(rankMatch[1].replace(/,/g, ''), 10);
-                if (!isNaN(currentPoints)) {
-                    if (firstRankingPoint === null) {
-                        firstRankingPoint = currentPoints;
-                    }
-                    lastRankingPoint = currentPoints;
-                }
-            }
-            
-            // --- 기존 분석 로직 (원본과 동일) ---
             let earnedMatch = currentLine.match(coinEarnedPattern);
             if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
-            if (crabPattern.test(currentLine)) crabCount++;
-            if (minigamePattern.test(currentLine)) minigameCount++;
+            if (crabPattern.test(currentLine)) {
+            crabCount++;
+            }
+            if (minigamePattern.test(currentLine)) {
+                minigameCount++;
+            }
             let spentMatch = currentLine.match(coinSpentPattern);
             if (spentMatch) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
-            
             let itemMatch = currentLine.match(acquisitionPattern);
             if (!itemMatch) return;
-
             let foundRankingPoints = false;
             for (let j = 1; j < 5; j++) {
                 if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) {
@@ -178,11 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
             }
-
             if (foundRankingPoints) {
                 const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
                 if (!timeMatch) return;
-                
                 const timeStr = timeMatch[1];
                 const timestamp = new Date(`${logDate}T${timeStr}`);
                 
@@ -198,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 currentSession.end = timestamp;
                 lastTime = timestamp;
-
                 const rawItem = itemMatch[1].trim();
                 const count = parseInt(itemMatch[2], 10);
                 const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
@@ -208,14 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-
-        // ★★★ 생활랭킹 최종 증가량 계산 (추가된 부분) ★★★
-        let totalRankingPointsGained = 0;
-        if (firstRankingPoint !== null && lastRankingPoint !== null && lastRankingPoint > firstRankingPoint) {
-            totalRankingPointsGained = lastRankingPoint - firstRankingPoint;
-        }
-
-        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointsGained };
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount };
     }
     
     analyzeButton.addEventListener('click', async () => {
@@ -245,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const combinedLogs = await readAndCombineFiles(logFiles);
             const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items, logDate);
-            
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
             window.open('results.html', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
