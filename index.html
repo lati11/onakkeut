@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items, logDate);
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
-            window.open('results.html', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
+            window.open('results.html', '_blank');
             closeModal();
         } catch (error) {
             console.error(error);
