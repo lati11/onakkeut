@@ -90,8 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentJobData = JOB_DATA[jobName];
 
         const formatDate = (date) => date.toLocaleString('sv-SE').replace(/-/g, '.');
-        const titleDateString = firstLogTime ? `${formatDate(new Date(firstLogTime))} ~ ${formatDate(new Date(lastLogTime))}` : "분석 결과";
-        document.getElementById('page-title').textContent = `${currentJobData.title} - ${titleDateString}`;
+        const titleDateString = firstLogTime ? `${formatDate(new Date(firstLogTime))} ~ ${formatDate(new Date(lastLogTime))}` : "";
+        document.getElementById('page-title').innerHTML = `${currentJobData.title} <span class="text-base text-gray-500 font-normal">${titleDateString}</span>`;
         document.title = `${currentJobData.title} - ${titleDateString}`;
 
         const itemTableBody = document.getElementById('item-table-body');
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sortedTotalItems.length > 0) {
             sortedTotalItems.forEach(name => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-contain" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
+                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-6 w-6 rounded-full object-contain" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
                 itemTableBody.appendChild(tr);
             });
         } else {
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailsHtml += `<tr>
                     <td class="px-6 py-3 whitespace-nowrap">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 h-8 w-8">
+                            <div class="flex-shrink-0 h-5 w-5">
                                 <img class="h-8 w-8 rounded-full object-contain" src="${imageUrl}" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';">
                             </div>
                             <div class="ml-3">
