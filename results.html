@@ -103,6 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sortedTotalItems.length > 0) {
             sortedTotalItems.forEach(name => {
                 const tr = document.createElement('tr');
+                const formatDateTime = (date) => date.toLocaleString('sv-SE').replace(/-/g, '.');
+                const startTimeString = formatDateTime(session.start);
+                const endTimeString = formatDateTime(session.end);
                 tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-10 w-10"><img class="h-10 w-10 rounded-full object-contain" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
                 itemTableBody.appendChild(tr);
             });
