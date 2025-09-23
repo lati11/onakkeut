@@ -60,12 +60,12 @@
                         </div>
                     </div>
 
-                    <div id="fishing-info-box" class="bg-gray-50 p-4 rounded-lg flex items-center justify-center space-x-6 hidden">
+                    <div id="fishing-info-box" class="bg-gray-50 p-4 rounded-lg flex-wrap items-center justify-center space-x-6 hidden">
                         <p id="crab-count-label" class="text-sm text-gray-700"><span class="font-semibold">오늘 만난 게 :</span> 0 마리</p>
                         <p id="minigame-count-label" class="text-sm text-gray-700"><span class="font-semibold">오늘 진행한 미니게임 :</span> 0 번</p>
                     </div>
 
-                    <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-center space-x-6">
+                    <div class="bg-gray-50 p-4 rounded-lg flex flex-wrap items-center justify-center space-x-6">
                         <img src="images/coin.png" alt="코인 아이콘" class="w-6 h-6">
                         <p id="earned-label" class="text-sm text-gray-700"><span class="font-semibold">번 돈 :</span> 0 코인</p>
                         <p id="spent-label" class="text-sm text-gray-700"><span class="font-semibold">쓴 돈 :</span> 0 코인</p>
@@ -92,11 +92,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
 
     function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain } = results;
+        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates } = results;
         const currentJobData = JOB_DATA[jobName];
 
-        const formatDate = (date) => date.toLocaleString('sv-SE').replace(/-/g, '.');
-        const titleDateString = firstLogTime ? `${formatDate(new Date(firstLogTime))} ~ ${formatDate(new Date(lastLogTime))}` : "분석 결과";
+        const titleDateString = (() => {
+            if (!uniqueDates || uniqueDates.length === 0) return "";
+            if (uniqueDates.length > 2) {
+                return uniqueDates.map(d => d.replace(/-/g, '/')).join(', ');
+            } else {
+                const start = firstLogTime ? new Date(firstLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
+                const end = lastLogTime ? new Date(lastLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
+                return start && end ? `${start} ~ ${end}` : "분석 결과";
+            }
+        })();
+
         document.getElementById('page-title').innerHTML = `${currentJobData.title} <span class="text-base text-gray-500 font-normal">${titleDateString}</span>`;
         document.title = `${currentJobData.title} - ${titleDateString}`;
 
@@ -143,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
 
-        const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1)}점)</span>` : "";
+        const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
         document.getElementById('session-label').innerHTML = `생직 시간 (총 ${totalMinutes}분)${rankingPointGainText}`;
         
         if (jobName === "어부") {
