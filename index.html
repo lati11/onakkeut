@@ -136,12 +136,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastLogTime = null; 
         let coinsEarned = 0.0;
         let coinsSpent = 0.0;
+        let crabCount = 0;
+        let minigameCount = 0;
         const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
         const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/;
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
+        const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
+        const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
+        
         logs.forEach((currentLine, i) => {
             let earnedMatch = currentLine.match(coinEarnedPattern);
             if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
+            if (crabPattern.test(currentLine)) {
+            crabCount++;
+            }
+            if (minigamePattern.test(currentLine)) {
+                minigameCount++;
+            }
             let spentMatch = currentLine.match(coinSpentPattern);
             if (spentMatch) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
             let itemMatch = currentLine.match(acquisitionPattern);
@@ -180,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime };
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount };
     }
     
     analyzeButton.addEventListener('click', async () => {
