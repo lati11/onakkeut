@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // analyzeLog 함수는 이전과 동일 (수정 필요 없음)
-    async function analyzeLog(logsText, itemList) {
+    async function analyzeLog(logsText, itemList, logDate) {
         const logs = logsText.split(/\r?\n/);
         const totalItemCounts = {};
         itemList.forEach(item => totalItemCounts[item] = 0);
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!timeMatch) return;
                 const timeStr = timeMatch[1];
                 const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-                const timestamp = new Date();
+                const timestamp = new Date(`${logDate}T${timeStr}`);
                 timestamp.setHours(hours, minutes, seconds, 0);
                 if (firstLogTime === null) firstLogTime = timestamp;
                 lastLogTime = timestamp;
@@ -195,8 +195,26 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingSpinner.classList.remove('hidden');
         document.getElementById('analysis-status').textContent = '분석이 완료되면 새 창이 열립니다.';
         try {
+            const dateRegex = /(\d{4}-\d{2}-\d{2})/;
+            let logDate = null;
+            for (const file of logFiles) {
+                const match = file.name.match(dateRegex);
+                if (match) {
+                    logDate = match[1];
+                    break;
+                }
+            }
+            // 날짜를 못찾으면 오늘 날짜 사용
+            if (!logDate) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                logDate = `${year}-${month}-${day}`;
+            }
+
             const combinedLogs = await readAndCombineFiles(logFiles);
-            const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items);
+            const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items, logDate);
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
             window.open('results.html', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
