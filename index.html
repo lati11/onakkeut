@@ -7,8 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/dist/buffer.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/iconv-lite@0.6.3/dist/iconv-lite.min.js"></script>
+    <script src="https://bundle.run/iconv-lite"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -101,18 +100,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const buffer = new Uint8Array(event.target.result);
                         let dataToDecode = buffer;
-    
+
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
                         
-                        // 1. UTF-8로 먼저 시도합니다.
                         let text = new TextDecoder('utf-8').decode(dataToDecode);
-    
-                        // 2. 만약 글자가 깨지는 현상()이 발생하면 CP949로 다시 시도합니다.
+
+                        // ❗ 2. 깨진 글자()를 정확히 확인하도록 수정
                         if (text.includes('')) {
                             console.log(`UTF-8 decoding resulted in garbled text for ${file.name}, trying CP949...`);
-                            text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
+                            text = iconv.decode(window.Buffer.from(dataToDecode), 'cp949');
                         }
                         resolve(text);
                     } catch (error) {
