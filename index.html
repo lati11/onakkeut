@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
                             // UTF-8 실패 시 CP949로 변환 (window.Buffer와 window.iconv 사용)
-                            text = window.iconv.decode(window.Buffer.from(dataToDecode), 'cp949');
+                            text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
                         }
                         resolve(text);
                     } catch (error) {
