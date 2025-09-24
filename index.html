@@ -145,10 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
         
         logs.forEach((currentLine, i) => {
+            
             let earnedMatch = currentLine.match(coinEarnedPattern);
             if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
             if (crabPattern.test(currentLine)) {
-            crabCount++;
+                crabCount++;
             }
             if (minigamePattern.test(currentLine)) {
                 minigameCount++;
