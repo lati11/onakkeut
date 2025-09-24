@@ -7,8 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/iconv-lite/0.6.3/iconv-lite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/dist/buffer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/iconv-lite@0.6.3/dist/iconv-lite.min.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -40,7 +40,7 @@
                     <label class="block text-gray-700 text-sm font-bold mb-2 text-left" for="log-file-input">
                         로그 파일 선택 (.log / .gz) - 여러 개 선택 가능
                     </label>
-                    <label id="file-drop-zone" class="w-full flex items-center px-4 py-2 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-green-500 hover:text-white transition-colors duration-200">
+                    <label class="w-full flex items-center px-4 py-2 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
                         <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
                         </svg>
@@ -54,6 +54,7 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     <p class="mt-2 text-gray-600">로그 파일을 분석 중입니다...</p>
+                    <p id="analysis-status" class="mt-1 text-sm text-gray-500"></p>
                 </div>
             </div>
             <div class="p-4 bg-gray-50 border-t text-right space-x-2">
@@ -78,29 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modal-title');
     
     function createMainMenu() { const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
-    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; updateFileLabel(); loadingSpinner.classList.add('hidden'); }
+    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하세요'; loadingSpinner.classList.add('hidden'); }
     function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
 
     fileInput.addEventListener('change', (e) => {
         logFiles = Array.from(e.target.files);
-        updateFileLabel();
-    });
-    
-    const dropZone = document.getElementById('file-drop-zone');
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-green-500', 'bg-green-50'); });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-green-500', 'bg-green-50'); });
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('border-green-500', 'bg-green-50');
-        const files = e.dataTransfer.files;
-        if (files.length) {
-            logFiles = Array.from(files);
-            fileInput.files = files;
-            updateFileLabel();
-        }
-    });
-
-    function updateFileLabel() {
         if (logFiles.length > 1) {
             fileChosenLabel.textContent = `${logFiles.length}개의 파일이 선택됨`;
         } else if (logFiles.length === 1) {
@@ -108,10 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             fileChosenLabel.textContent = '파일을 선택하세요';
         }
-    }
+    });
 
-    async function readAndProcessFiles(files) {
-        let totalRankingPointGain = 0;
+    async function readAndCombineFiles(files) {
         const fileReadPromises = files.map(file => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -119,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const buffer = new Uint8Array(event.target.result);
                         let dataToDecode = buffer;
+
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
@@ -127,38 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
-                            text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
+                            text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
                         }
-                        
-                        const lines = text.split(/\r?\n/);
-                        const rankingPointRegex = /\[생활 \S+ ([\d,]+\.\d)\]/;
-                        let firstPoint = null, lastPoint = null;
-                        for(const line of lines){
-                            const match = line.match(rankingPointRegex);
-                            if(match && match[1]){
-                                const point = parseFloat(match[1].replace(/,/g, ''));
-                                if(!isNaN(point)) {
-                                    if(firstPoint === null) firstPoint = point;
-                                    lastPoint = point;
-                                }
-                            }
-                        }
-                        if(firstPoint !== null && lastPoint !== null && lastPoint >= firstPoint){
-                            totalRankingPointGain += (lastPoint - firstPoint);
-                        }
-
-                        const dateRegex = /(\d{4}-\d{2}-\d{2})/;
-                        let logDate = null;
-                        const match = file.name.match(dateRegex);
-                        if (match && match[1]) {
-                            logDate = match[1];
-                        } else {
-                            const today = new Date();
-                            logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                        }
-
-                        const datedLines = lines.map(line => `${logDate}|${line}`);
-                        resolve(datedLines);
+                        resolve(text);
                     } catch (error) {
                         reject(error);
                     }
@@ -167,14 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.readAsArrayBuffer(file);
             });
         });
-        const allDatedLinesArrays = await Promise.all(fileReadPromises);
-        const allDatedLines = allDatedLinesArrays.flat();
-        return { allDatedLines, totalRankingPointGain };
+        const allTexts = await Promise.all(fileReadPromises);
+        return allTexts.join('\n');
     }
 
-    async function analyzeLog(datedLogs, itemList) {
-        const itemCounts = {};
-        itemList.forEach(item => itemCounts[item] = 0);
+    async function analyzeLog(logsText, itemList, logDate) {
+        const logs = logsText.split(/\r?\n/);
+        const totalItemCounts = {};
+        itemList.forEach(item => totalItemCounts[item] = 0);
         const sessions = [];
         let currentSession = null;
         let lastTime = null;
@@ -189,76 +143,55 @@ document.addEventListener('DOMContentLoaded', () => {
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
-        const timePattern = /^\[(\d{2}:\d{2}:\d{2})\]/;
-        const allDates = new Set();
+        
+        logs.forEach((currentLine, i) => {
+            let earnedMatch = currentLine.match(coinEarnedPattern);
+            if (earnedMatch) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
+            if (crabPattern.test(currentLine)) {
+            crabCount++;
+            }
+            if (minigamePattern.test(currentLine)) {
+                minigameCount++;
+            }
+            let spentMatch = currentLine.match(coinSpentPattern);
+            if (spentMatch) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
+            let itemMatch = currentLine.match(acquisitionPattern);
+            if (!itemMatch) return;
+            let foundRankingPoints = false;
+            for (let j = 1; j < 5; j++) {
+                if ((i + j) < logs.length && logs[i + j].includes("생활랭킹 포인트")) {
+                    foundRankingPoints = true;
+                    break;
+                }
+            }
+            if (foundRankingPoints) {
+                const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
+                if (!timeMatch) return;
+                const timeStr = timeMatch[1];
+                const timestamp = new Date(`${logDate}T${timeStr}`);
+                
+                if (firstLogTime === null) firstLogTime = timestamp;
+                lastLogTime = timestamp;
 
-        datedLogs.forEach((datedLine, i) => {
-            if (!datedLine || !datedLine.includes('|')) return;
-            const [logDate, currentLine] = datedLine.split('|');
-
-            if (crabPattern.test(currentLine)) crabCount++;
-            if (minigamePattern.test(currentLine)) minigameCount++;
-            
-            const earnedMatch = currentLine.match(coinEarnedPattern);
-            if (earnedMatch && earnedMatch[1]) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
-            
-            const spentMatch = currentLine.match(coinSpentPattern);
-            if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
-
-            const itemMatch = currentLine.match(acquisitionPattern);
-            if (itemMatch && itemMatch[1]) {
+                if (currentSession === null) {
+                    currentSession = { start: timestamp, end: timestamp, items: {} };
+                    sessions.push(currentSession);
+                } else if (lastTime && (timestamp.getTime() - lastTime.getTime()) / 1000 > 300) {
+                    currentSession = { start: timestamp, end: timestamp, items: {} };
+                    sessions.push(currentSession);
+                }
+                currentSession.end = timestamp;
+                lastTime = timestamp;
                 const rawItem = itemMatch[1].trim();
                 const count = parseInt(itemMatch[2], 10);
                 const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
                 if (itemList.includes(itemName)) {
-                    itemCounts[itemName] = (itemCounts[itemName] || 0) + count;
-                }
-            }
-            
-            let isActivityLine = false;
-            if(itemMatch) {
-                 for (let j = 1; j < 5; j++) {
-                    if ((i + j) < datedLogs.length && datedLogs[i+j] && datedLogs[i+j].includes("생활랭킹 포인트")) {
-                        isActivityLine = true;
-                        break;
-                    }
-                }
-            }
-
-            if (isActivityLine) {
-                const timeMatch = currentLine.match(timePattern);
-                if (timeMatch && timeMatch[1]) {
-                    const timeStr = timeMatch[1];
-                    const timestamp = new Date(`${logDate}T${timeStr}`);
-                    
-                    if (!(timestamp instanceof Date) || isNaN(timestamp)) return; 
-
-                    allDates.add(logDate);
-                    if (firstLogTime === null || timestamp < firstLogTime) firstLogTime = timestamp;
-                    if (lastLogTime === null || timestamp > lastLogTime) lastLogTime = timestamp;
-
-                    if (currentSession === null) {
-                        currentSession = { start: timestamp, end: timestamp, items: {} };
-                        sessions.push(currentSession);
-                    } else if (lastTime && (timestamp.getTime() - lastTime.getTime()) / 1000 > 300) {
-                        currentSession = { start: timestamp, end: timestamp, items: {} };
-                        sessions.push(currentSession);
-                    }
-                    currentSession.end = timestamp;
-                    lastTime = timestamp;
-
-                    if (itemMatch) {
-                        const itemName = itemMatch[1].trim().replace(/^[^가-힣a-zA-Z0-9]*/, "");
-                        const count = parseInt(itemMatch[2], 10);
-                        if(itemList.includes(itemName)) {
-                           currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
-                        }
-                    }
+                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                    currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
                 }
             }
         });
-        const uniqueDates = Array.from(allDates).sort();
-        return { itemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, uniqueDates };
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount };
     }
     
     analyzeButton.addEventListener('click', async () => {
@@ -266,19 +199,28 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('로그 파일을 먼저 선택해주세요.');
             return;
         }
-
-        if (typeof window.iconv === 'undefined' || typeof window.buffer === 'undefined') {
-            alert('분석 라이브러리를 불러오는 데 실패했습니다. 인터넷 연결을 확인하고 잠시 후 페이지를 새로고침(F5) 해주세요.');
-            return;
-        }
-
         loadingSpinner.classList.remove('hidden');
+        document.getElementById('analysis-status').textContent = '분석이 완료되면 새 창이 열립니다.';
         try {
-            const { allDatedLines, totalRankingPointGain } = await readAndProcessFiles(logFiles);
-            const results = await analyzeLog(allDatedLines, JOB_DATA[currentJob].items);
-            
-            results.totalRankingPointGain = totalRankingPointGain;
+            const dateRegex = /(\d{4}-\d{2}-\d{2})/;
+            let logDate = null;
+            for (const file of logFiles) {
+                const match = file.name.match(dateRegex);
+                if (match) {
+                    logDate = match[1];
+                    break;
+                }
+            }
+            if (!logDate) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                logDate = `${year}-${month}-${day}`;
+            }
 
+            const combinedLogs = await readAndCombineFiles(logFiles);
+            const results = await analyzeLog(combinedLogs, JOB_DATA[currentJob].items, logDate);
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
             window.open('results.html', '_blank');
@@ -288,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`분석 중 오류가 발생했습니다:\n${error.message}`);
         } finally {
             loadingSpinner.classList.add('hidden');
+            document.getElementById('analysis-status').textContent = '';
         }
     });
     
