@@ -84,13 +84,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
 
     function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates } = results;
+        const { 
+            totalItemCounts = {}, 
+            sessions = [], 
+            coinsEarned = 0, 
+            coinsSpent = 0, 
+            firstLogTime = null, 
+            lastLogTime = null, 
+            crabCount = 0, 
+            minigameCount = 0, 
+            totalRankingPointGain = 0, 
+            uniqueDates = [] 
+        } = results || {};
+    
         const currentJobData = JOB_DATA[jobName];
     
-        
+        // 제목
         const titleDateString = (() => {
             if (!uniqueDates || uniqueDates.length === 0) {
-                if (firstLogTime) { 
+                if (firstLogTime) {
                     return new Date(firstLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1);
                 }
                 return "분석 결과";
@@ -111,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('page-title').innerHTML = `${currentJobData.title} <span class="text-base text-gray-500 font-normal">${titleDateString}</span>`;
         document.title = `${currentJobData.title} - ${titleDateString}`;
     
-    
+        // 목록
         const itemTableBody = document.getElementById('item-table-body');
         itemTableBody.innerHTML = '';
         const sortedTotalItems = currentJobData.items.filter(name => totalItemCounts[name] > 0);
@@ -126,10 +138,10 @@ document.addEventListener('DOMContentLoaded', () => {
             itemTableBody.innerHTML = `<tr><td colspan="2" class="text-center px-6 py-4 text-gray-500">획득한 부산물이 없습니다.</td></tr>`;
         }
     
-
+        // 세션
         sessionTableBody.innerHTML = '';
         let totalMinutes = 0;
-        const parsedSessions = sessions.map(s => ({ ...s, start: new Date(s.start), end: new Date(s.end) }));
+        const parsedSessions = (sessions || []).map(s => ({ ...s, start: new Date(s.start), end: new Date(s.end) }));
     
         if (parsedSessions.length > 0) {
             parsedSessions.forEach((session, idx) => {
@@ -153,18 +165,19 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
     
-
-        const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
+    
+        const gain = totalRankingPointGain || 0;
+        const rankingPointGainText = gain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${gain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
         document.getElementById('session-label').innerHTML = `생직 시간 (총 ${totalMinutes}분)${rankingPointGainText}`;
         
         if (jobName === "어부") {
             document.getElementById('fishing-info-box').classList.remove('hidden');
-            document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">오늘 만난 게 :</span> ${crabCount} 마리`;
-            document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">오늘 진행한 미니게임 :</span> ${minigameCount} 번`;
+            document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">오늘 만난 게 :</span> ${crabCount || 0} 마리`;
+            document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">오늘 진행한 미니게임 :</span> ${minigameCount || 0} 번`;
         }
         
-        document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
-        document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${coinsSpent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
+        document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${(coinsEarned || 0).toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
+        document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${(coinsSpent || 0).toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
     }
     
     function toggleSessionDetails(event) {
