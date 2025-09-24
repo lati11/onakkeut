@@ -97,17 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
         const titleDateString = (() => {
             if (!uniqueDates || uniqueDates.length === 0) return "";
+            const formattedDates = uniqueDates.map(d => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1));
             
-            const formattedDates = uniqueDates.map(d => {
-                const date = new Date(d);
-                return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
-            });
-
             let isContinuous = true;
             for (let i = 0; i < uniqueDates.length - 1; i++) {
                 const currentDate = new Date(uniqueDates[i]);
                 const nextDate = new Date(uniqueDates[i+1]);
-                const diffTime = nextDate - currentDate;
+                const diffTime = Math.abs(nextDate - currentDate);
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 if (diffDays > 1) {
                     isContinuous = false;
@@ -168,14 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
     
-        const rankingPointGainText = totalRankingPointGain ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
+        const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
         document.getElementById('session-label').innerHTML = `생직 시간 (총 ${totalMinutes}분)${rankingPointGainText}`;
         
         if (jobName === "어부") {
-            const fishingBox = document.getElementById('fishing-info-box');
-            if (fishingBox) fishingBox.classList.remove('hidden');
-            document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">만난 게 :</span> ${crabCount} 마리`;
-            document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">진행한 미니게임 :</span> ${minigameCount} 번`;
+            document.getElementById('fishing-info-box').classList.remove('hidden');
+            document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">오늘 만난 게 :</span> ${crabCount} 마리`;
+            document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">오늘 진행한 미니게임 :</span> ${minigameCount} 번`;
         }
         
         document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
@@ -212,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-6 py-3 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="flex-shrink-0 h-5 w-5 transform -translate-y-px">
-                                <img class="h-5 w-5 object-contain" src="${imageUrl}" onerror="this.src='https.placehold.co/48x48/cccccc/ffffff?text=?';">
+                                <img class="h-5 w-5 object-contain" src="${imageUrl}" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';">
                             </div>
                             <div class="ml-3 flex items-center">
                                 <div class="text-sm font-medium text-gray-900">${itemName}</div>
