@@ -65,6 +65,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // ------------------- 전역 변수 및 데이터 설정 -------------------
     const JOB_DATA = { "어부": { "title": "오낚끝 (어부)", "menu_icon": "menuicon1.png", "items": [ "물의 원소 가루", "물의 원소 조각", "물의 원소 정수", "진주", "행운의 편지", "해적의 보물상자", "마녀의 눈물", "용왕의 왕관", "실종된 잠수부 헬멧", "고대 물의 영혼석", "물의 정령의 유리구두", "고급 어부 상자" ] }, "광부": { "title": "오광끝 (광부)", "menu_icon": "menuicon2.png", "items": [ "땅의 원소 가루", "땅의 원소 조각", "땅의 원소 정수", "가넷", "아쿠아마린", "토파즈", "페리도트", "암모나이트 화석", "거미 화석", "물고기 화석", "공룡알 화석", "솔라이트 원석", "실종된 광부의 표본샘플", "고대의 피라미드 큐브", "대지의 정령의 호박화석", "고급 광부 상자" ] }, "농부": { "title": "오농끝 (농부)", "menu_icon": "menuicon3.png", "items": [ "불의 원소 가루", "불의 원소 조각", "불의 원소 정수", "애벌레", "무당벌레", "메뚜기", "딱정벌레", "밀 번들", "대나무 번들", "비트 번들", "감자 번들", "갈색 버섯 번들", "빨간 버섯 번들", "선인장 번들", "당근 번들", "후렴화 번들", "코코아콩 번들", "네더와트 번들", "사탕수수 번들", "켈프 번들", "수박 조각 번들", "달콤한 열매 번들", "개량된 목화솜", "실종된 농부의 땅문서", "고대식물의 모종", "불의 정령의 꽃 화관", "고급 농부 상자" ] }, "나무꾼": { "title": "오나끝 (나무꾼)", "menu_icon": "menuicon4.png", "items": [ "바람의 원소 가루", "바람의 원소 조각", "바람의 원소 정수", "나무껍질", "고목나무 수액", "맨드레이크", "바오밥나무 뿌리", "송이버섯", "불로초", "설삼", "황금버섯", "원시부족 가면", "실종된 나무꾼의 장갑", "고대 정령의 메아리", "나무의 정령의 연꽃 찻잔", "고급 나무꾼 상자" ] }, "사냥꾼": { "title": "오냥끝 (사냥꾼)", "menu_icon": "menuicon5.png", "items": [ "영혼의 원소 가루", "영혼의 원소 조각", "영혼의 원소 정수", "짐승의 송곳니", "짐승의 가죽", "짐승의 꼬리", "독침", "용의 피", "대지의 결정체", "부드러운 깃털", "부드러운 털", "버섯 고기", "바람의 결정체", "물방울의 별", "공허의 파동", "돌고래의 마음", "물의 결정체", "넘실거리는 불꽃", "가스트의 파편", "불의 결정체", "더러운 천", "엔더 진주 가루", "사악한 기운", "수상한 주머니", "타락한 월계수 잎", "타락한 요정의 가루", "어둠의 결정체", "미스틱 코어", "갈비뼈", "요정의 가루", "빛의 결정체", "신비한 동물 가죽", "실종된 사냥꾼 고글", "고대 맘모스 뿔", "어둠의 정령의 부러진 스태프", "고급 사냥꾼 상자", "실", "안장", "고사리", "슬라임볼", "깃털", "점토 덩이", "마른 덤불", "발광석 가루", "레드스톤 가루", "뼈다귀", "화약", "바다의 심장", "인갑", "전달체", "프리즈머린 수정", "프리즈머린 조각", "먹물 주머니", "발광 먹물 주머니", "젖은 스펀지", "가죽", "화염구", "위더 장미", "블레이즈 막대기", "벌레 먹은 돌", "엔더 진주", "셜커 껍데기", "거미줄" ] } };
     let currentJob = null;
     let logFiles = [];
@@ -77,60 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modal-title');
     const dropZone = document.getElementById('file-drop-zone');
 
-    function initializeApp() {
-        createMainMenu();
-        fileInput.addEventListener('change', (e) => {
-            logFiles = Array.from(e.target.files);
-            updateFileLabel();
-        });
-
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-green-500', 'bg-green-50'); });
-        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-green-500', 'bg-green-50'); });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-green-500', 'bg-green-50');
-            const files = e.dataTransfer.files;
-            if (files.length) {
-                logFiles = Array.from(files);
-                fileInput.files = files;
-                updateFileLabel();
-            }
-        });
-
-        analyzeButton.addEventListener('click', async () => {
-            if (logFiles.length === 0 || !currentJob) {
-                alert('로그 파일을 먼저 선택해주세요.');
-                return;
-            }
-
-            loadingSpinner.classList.remove('hidden');
-            try {
-                const { allDatedLines, totalRankingPointGain } = await readAndProcessFiles(logFiles);
-                const results = await analyzeLog(allDatedLines, JOB_DATA[currentJob].items);
-                
-                results.totalRankingPointGain = totalRankingPointGain;
-
-                sessionStorage.setItem('analysisResult', JSON.stringify(results));
-                sessionStorage.setItem('currentJob', currentJob);
-                window.open('results.html', '_blank');
-                closeModal();
-            } catch (error) {
-                console.error(error);
-                alert(`분석 중 오류가 발생했습니다:\n${error.message}`);
-            } finally {
-                loadingSpinner.classList.add('hidden');
-            }
-        });
-        createMainMenu();
-        document.getElementById('close-modal-button').addEventListener('click', closeModal);
-    }
-
-    const libraryCheckInterval = setInterval(() => {
-        if (typeof window.buffer !== 'undefined' && typeof window.iconv !== 'undefined') {
-            clearInterval(libraryCheckInterval);
-            initializeApp();
-        }
-    }, 100);
+    // ------------------- 함수 정의 -------------------
 
     function createMainMenu() {
         const jobButtonsContainer = document.getElementById('job-buttons');
@@ -321,6 +269,64 @@ document.addEventListener('DOMContentLoaded', () => {
         const uniqueDates = Array.from(allDates).sort();
         return { itemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, uniqueDates };
     }
+
+    // ------------------- 앱 실행 및 이벤트 리스너 설정 -------------------
+
+    function initializeApp() {
+        createMainMenu();
+
+        fileInput.addEventListener('change', (e) => {
+            logFiles = Array.from(e.target.files);
+            updateFileLabel();
+        });
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-green-500', 'bg-green-50'); });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-green-500', 'bg-green-50'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-green-500', 'bg-green-50');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                logFiles = Array.from(files);
+                fileInput.files = files;
+                updateFileLabel();
+            }
+        });
+
+        analyzeButton.addEventListener('click', async () => {
+            if (logFiles.length === 0 || !currentJob) {
+                alert('로그 파일을 먼저 선택해주세요.');
+                return;
+            }
+
+            loadingSpinner.classList.remove('hidden');
+            try {
+                const { allDatedLines, totalRankingPointGain } = await readAndProcessFiles(logFiles);
+                const results = await analyzeLog(allDatedLines, JOB_DATA[currentJob].items);
+                
+                results.totalRankingPointGain = totalRankingPointGain;
+
+                sessionStorage.setItem('analysisResult', JSON.stringify(results));
+                sessionStorage.setItem('currentJob', currentJob);
+                window.open('results.html', '_blank');
+                closeModal();
+            } catch (error) {
+                console.error(error);
+                alert(`분석 중 오류가 발생했습니다:\n${error.message}`);
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('close-modal-button').addEventListener('click', closeModal);
+    }
+
+    const libraryCheckInterval = setInterval(() => {
+        if (typeof window.buffer !== 'undefined' && typeof window.iconv !== 'undefined') {
+            clearInterval(libraryCheckInterval);
+            initializeApp();
+        }
+    }, 100);
 });
 </script>
 </body>
