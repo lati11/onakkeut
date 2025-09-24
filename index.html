@@ -157,9 +157,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return { allDatedLines, totalRankingPointGain };
     }
 
-    
-    async function analyzeLog(logsText, itemList, logDate) {
-        const logs = logsText.split(/\r?\n/);
+
+    async function analyzeLog(datedLogs, itemList) {
+        const logs = datedLogs; // .split()을 사용하지 않고 바로 할당합니다.
         const totalItemCounts = {};
         itemList.forEach(item => totalItemCounts[item] = 0);
         const sessions = [];
@@ -176,53 +176,47 @@ document.addEventListener('DOMContentLoaded', () => {
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
         const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
+        const timePattern = /^\[(\d{2}:\d{2}:\d{2})\]/;
         
-        logs.forEach((currentLine, i) => {
-            // --- 1. 공통 정보 집계 (코인, 게, 미니게임) ---
+        const allDates = new Set();
+    
+        logs.forEach((datedLine, i) => {
+            if (!datedLine || !datedLine.includes('|')) return;
+            const [logDate, currentLine] = datedLine.split('|');
+    
+            // --- 모든 종류의 로그에서 공통 정보 추출 ---
+            if (crabPattern.test(currentLine)) crabCount++;
+            if (minigamePattern.test(currentLine)) minigameCount++;
+    
             const earnedMatch = currentLine.match(coinEarnedPattern);
-            if (earnedMatch && earnedMatch[1]) {
-                coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
-            }
-            if (crabPattern.test(currentLine)) {
-                crabCount++;
-            }
-            if (minigamePattern.test(currentLine)) {
-                minigameCount++;
-            }
-            const spentMatch = currentLine.match(coinSpentPattern);
-            if (spentMatch && spentMatch[1]) {
-                coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
-            }
+            if (earnedMatch && earnedMatch[1]) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
             
-            // --- 2. 아이템 획득 및 세션 기록 ---
+            const spentMatch = currentLine.match(coinSpentPattern);
+            if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
+    
+            // --- 아이템 획득 및 세션 기록 ---
             const itemMatch = currentLine.match(acquisitionPattern);
             if (itemMatch && itemMatch[1]) {
-                const rawItem = itemMatch[1].trim();
-                const count = parseInt(itemMatch[2], 10);
-                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
-    
-                // 전체 아이템 집계
-                if (itemList.includes(itemName)) {
-                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
-                }
-    
                 // 생활랭킹 포인트가 동반되는 활동인지 확인 후 세션 기록
                 let foundRankingPoints = false;
                 for (let j = 1; j < 5; j++) {
-                    if ((i + j) < logs.length && logs[i + j] && logs[i + j].includes("생활랭킹 포인트")) {
+                    if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
                         foundRankingPoints = true;
                         break;
                     }
                 }
-    
+                
                 if (foundRankingPoints) {
-                    const timeMatch = currentLine.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
+                    const timeMatch = currentLine.match(timePattern);
                     if (timeMatch && timeMatch[1]) {
                         const timeStr = timeMatch[1];
                         const timestamp = new Date(`${logDate}T${timeStr}`);
                         
-                        if (firstLogTime === null) firstLogTime = timestamp;
-                        lastLogTime = timestamp;
+                        if (!(timestamp instanceof Date) || isNaN(timestamp)) return; 
+    
+                        allDates.add(logDate);
+                        if (firstLogTime === null || timestamp < firstLogTime) firstLogTime = timestamp;
+                        if (lastLogTime === null || timestamp > lastLogTime) lastLogTime = timestamp;
     
                         if (currentSession === null) {
                             currentSession = { start: timestamp, end: timestamp, items: {} };
@@ -233,16 +227,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         currentSession.end = timestamp;
                         lastTime = timestamp;
-    
-                        // 현재 세션에 아이템 추가
-                        if (itemList.includes(itemName)) {
-                            currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
-                        }
+                    }
+                }
+                
+                const rawItem = itemMatch[1].trim();
+                const count = parseInt(itemMatch[2], 10);
+                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                
+                // 전체 아이템 집계
+                if (itemList.includes(itemName)) {
+                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                    // 현재 세션이 있으면 세션별 아이템에도 추가
+                    if(currentSession){
+                        currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
                     }
                 }
             }
         });
-        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount };
+    
+        const uniqueDates = Array.from(allDates).sort();
+        return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, uniqueDates };
     }
     
     analyzeButton.addEventListener('click', async () => {
