@@ -3,245 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>오낚끝 🎣 - 정산</title>
+    <title>오낚끝 🎣</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/iconv-lite/0.6.3/iconv-lite.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
+        .modal-bg { background-color: rgba(0,0,0,0.5); }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
-        .session-row { cursor: pointer; }
-        .session-row:hover { background-color: #f9fafb; }
-        .session-details td { padding: 0 !important; border-top: 2px solid #e5e7eb; border-bottom: 2px solid #e5e7eb; }
-        .details-table { margin: 0; width: 100%; border-collapse: collapse; }
-        .details-table th, .details-table td { border-bottom: 1px solid #e5e7eb; }
-        .details-table tr:last-child td { border-bottom: none; }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto p-4 md:p-8">
-        <div class="bg-white rounded-2xl shadow-xl w-full flex flex-col">
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm text-center">
+        <div class="w-full text-left mb-4">
+            <h1 class="text-xl font-bold text-gray-700">오낚끝 🎣</h1>
+        </div>
+        <h2 class="text-2xl font-bold mb-8 text-gray-700">오늘의 직업은?</h2>
+        <div id="job-buttons" class="space-y-4"></div>
+    </div>
+
+    <div id="analyzer-modal" class="fixed inset-0 modal-bg items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
             <div class="p-6 border-b">
-                <h2 id="page-title" class="text-2xl font-bold text-gray-800">정산</h2>
+                <h2 id="modal-title" class="text-2xl font-bold text-gray-800">분석기</h2>
             </div>
-            
-            <div class="p-6 overflow-y-auto flex-grow">
-                <div id="results-section" class="space-y-8">
-                    <div>
-                        <h3 class="text-xl font-semibold mb-3 text-gray-700">얻은 부산물 (전체 합계)</h3>
-                        <div class="overflow-hidden border border-gray-200 rounded-lg">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">부산물</th>
-                                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">개수</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="item-table-body" class="bg-white divide-y divide-gray-200"></tbody>
-                            </table>
+            <div class="p-6 overflow-y-auto flex-grow text-center">
+                <div class="mb-6 max-w-md mx-auto">
+                    <label class="block text-gray-700 text-sm font-bold mb-2 text-left" for="log-file-input">
+                        로그 파일 선택 (.log / .gz) - 여러 개 선택 가능
+                    </label>
+                    <label id="file-drop-zone" class="w-full flex items-center justify-center h-32 px-4 py-2 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border-2 border-dashed border-gray-300 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors duration-200">
+                        <div class="text-center">
+                            <svg class="w-10 h-10 mx-auto mb-2 text-gray-400" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
+                            </svg>
+                            <span id="file-chosen" class="truncate block font-bold text-gray-500">파일을 선택하거나 여기에 드롭하세요</span>
+                            <input type='file' id="log-file-input" class="hidden" accept=".log,.gz" multiple/>
                         </div>
-                    </div>
-                    <div>
-                        <h3 id="session-label" class="text-xl font-semibold mb-3 text-gray-700">생직 시간</h3>
-                        <div class="overflow-hidden border border-gray-200 rounded-lg">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">세션</th>
-                                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">시작</th>
-                                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">종료</th>
-                                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">분</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="session-table-body" class="bg-white divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div id="fishing-info-box" class="bg-gray-50 p-4 rounded-lg flex-wrap items-center justify-center space-x-6 hidden">
-                        <p id="crab-count-label" class="text-sm text-gray-700"><span class="font-semibold">만난 게 :</span> 0 마리</p>
-                        <p id="minigame-count-label" class="text-sm text-gray-700"><span class="font-semibold">진행한 미니게임 :</span> 0 번</p>
-                    </div>
-
-                    <div class="bg-gray-50 p-4 rounded-lg flex flex-wrap items-center justify-center space-x-6">
-                        <img src="images/coin.png" alt="코인 아이콘" class="w-6 h-6">
-                        <p id="earned-label" class="text-sm text-gray-700"><span class="font-semibold">번 돈 :</span> 0 코인</p>
-                        <p id="spent-label" class="text-sm text-gray-700"><span class="font-semibold">쓴 돈 :</span> 0 코인</p>
-                    </div>
+                    </label>
+                </div>
+                <div id="loading-spinner" class="text-center my-8 hidden">
+                    <svg class="animate-spin h-10 w-10 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-2 text-gray-600">로그 파일을 분석 중입니다...</p>
                 </div>
             </div>
-             <div class="p-4 bg-gray-50 border-t text-right">
-                <p class="text-sm text-gray-500">이 창은 새로고침해도 결과가 유지됩니다.</p>
+            <div class="p-4 bg-gray-50 border-t text-right space-x-2">
+                <button id="analyze-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">확인</button>
+                <button id="close-modal-button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">닫기</button>
             </div>
         </div>
     </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const IMAGE_BASE_URL = "images/";
     const JOB_DATA = { "어부": { "title": "오낚끝 (어부)", "menu_icon": "menuicon1.png", "items": [ "물의 원소 가루", "물의 원소 조각", "물의 원소 정수", "진주", "행운의 편지", "해적의 보물상자", "마녀의 눈물", "용왕의 왕관", "실종된 잠수부 헬멧", "고대 물의 영혼석", "물의 정령의 유리구두", "고급 어부 상자" ] }, "광부": { "title": "오광끝 (광부)", "menu_icon": "menuicon2.png", "items": [ "땅의 원소 가루", "땅의 원소 조각", "땅의 원소 정수", "가넷", "아쿠아마린", "토파즈", "페리도트", "암모나이트 화석", "거미 화석", "물고기 화석", "공룡알 화석", "솔라이트 원석", "실종된 광부의 표본샘플", "고대의 피라미드 큐브", "대지의 정령의 호박화석", "고급 광부 상자" ] }, "농부": { "title": "오농끝 (농부)", "menu_icon": "menuicon3.png", "items": [ "불의 원소 가루", "불의 원소 조각", "불의 원소 정수", "애벌레", "무당벌레", "메뚜기", "딱정벌레", "밀 번들", "대나무 번들", "비트 번들", "감자 번들", "갈색 버섯 번들", "빨간 버섯 번들", "선인장 번들", "당근 번들", "후렴화 번들", "코코아콩 번들", "네더와트 번들", "사탕수수 번들", "켈프 번들", "수박 조각 번들", "달콤한 열매 번들", "개량된 목화솜", "실종된 농부의 땅문서", "고대식물의 모종", "불의 정령의 꽃 화관", "고급 농부 상자" ] }, "나무꾼": { "title": "오나끝 (나무꾼)", "menu_icon": "menuicon4.png", "items": [ "바람의 원소 가루", "바람의 원소 조각", "바람의 원소 정수", "나무껍질", "고목나무 수액", "맨드레이크", "바오밥나무 뿌리", "송이버섯", "불로초", "설삼", "황금버섯", "원시부족 가면", "실종된 나무꾼의 장갑", "고대 정령의 메아리", "나무의 정령의 연꽃 찻잔", "고급 나무꾼 상자" ] }, "사냥꾼": { "title": "오냥끝 (사냥꾼)", "menu_icon": "menuicon5.png", "items": [ "영혼의 원소 가루", "영혼의 원소 조각", "영혼의 원소 정수", "짐승의 송곳니", "짐승의 가죽", "짐승의 꼬리", "독침", "용의 피", "대지의 결정체", "부드러운 깃털", "부드러운 털", "버섯 고기", "바람의 결정체", "물방울의 별", "공허의 파동", "돌고래의 마음", "물의 결정체", "넘실거리는 불꽃", "가스트의 파편", "불의 결정체", "더러운 천", "엔더 진주 가루", "사악한 기운", "수상한 주머니", "타락한 월계수 잎", "타락한 요정의 가루", "어둠의 결정체", "미스틱 코어", "갈비뼈", "요정의 가루", "빛의 결정체", "신비한 동물 가죽", "실종된 사냥꾼 고글", "고대 맘모스 뿔", "어둠의 정령의 부러진 스태프", "고급 사냥꾼 상자", "실", "안장", "고사리", "슬라임볼", "깃털", "점토 덩이", "마른 덤불", "발광석 가루", "레드스톤 가루", "뼈다귀", "화약", "바다의 심장", "인갑", "전달체", "프리즈머린 수정", "프리즈머린 조각", "먹물 주머니", "발광 먹물 주머니", "젖은 스펀지", "가죽", "화염구", "위더 장미", "블레이즈 막대기", "벌레 먹은 돌", "엔더 진주", "셜커 껍데기", "거미줄" ] } };
-    const FILENAME_MAP = { "물의 원소 가루": "water_elemental_powder", "물의 원소 조각": "water_elemental_shard", "물의 원소 정수": "water_elemental_essence", "진주": "pearl", "행운의 편지": "lucky_letter", "해적의 보물상자": "pirate_treasure_box", "마녀의 눈물": "witch_tear", "용왕의 왕관": "dragon_king_crown", "실종된 잠수부 헬멧": "missing_diver_helmet", "고대 물의 영혼석": "ancient_water_soulstone", "물의 정령의 유리구두": "water_spirit_glass_slipper", "고급 어부 상자": "advanced_fisher_box", "땅의 원소 가루": "earth_elemental_powder", "땅의 원소 조각": "earth_elemental_shard", "땅의 원소 정수": "earth_elemental_essence", "가넷": "garnet", "아쿠아마린": "aquamarine", "토파즈": "topaz", "페리도트": "peridot", "암모나이트 화석": "ammonite_fossil", "거미 화석": "spider_fossil", "물고기 화석": "fish_fossil", "공룡알 화석": "dino_egg_fossil", "솔라이트 원석": "solite_ore", "실종된 광부의 표본샘플": "missing_miner_sample", "고대의 피라미드 큐브": "ancient_pyramid_cube", "대지의 정령의 호박화석": "earth_spirit_amber_fossil", "고급 광부 상자": "advanced_miner_box", "불의 원소 가루": "fire_elemental_powder", "불의 원소 조각": "fire_elemental_shard", "불의 원소 정수": "fire_elemental_essence", "애벌레": "caterpillar", "무당벌레": "ladybug", "메뚜기": "grasshopper", "딱정벌레": "beetle", "밀 번들": "wheat_bundle", "대나무 번들": "bamboo_bundle", "비트 번들": "beet_bundle", "감자 번들": "potato_bundle", "갈색 버섯 번들": "brown_mushroom_bundle", "빨간 버섯 번들": "red_mushroom_bundle", "선인장 번들": "cactus_bundle", "당근 번들": "carrot_bundle", "후렴화 번들": "chorus_flower_bundle", "코코아콩 번들": "cocoa_beans_bundle", "네더와트 번들": "nether_wart_bundle", "사탕수수 번들": "sugar_cane_bundle", "켈프 번들": "kelp_bundle", "수박 조각 번들": "melon_slice_bundle", "달콤한 열매 번들": "sweet_berries_bundle", "개량된 목화솜": "improved_cotton", "실종된 농부의 땅문서": "missing_farmer_deed", "고대식물의 모종": "ancient_plant_seedling", "불의 정령의 꽃 화관": "fire_spirit_flower_crown", "고급 농부 상자": "advanced_farmer_box", "바람의 원소 가루": "wind_elemental_powder", "바람의 원소 조각": "wind_elemental_shard", "바람의 원소 정수": "wind_elemental_essence", "나무껍질": "tree_bark", "고목나무 수액": "old_tree_sap", "맨드레이크": "mandrake", "바오밥나무 뿌리": "baobab_root", "송이버섯": "pine_mushroom", "불로초": "herb_of_immortality", "설삼": "snow_ginseng", "황금버섯": "golden_mushroom", "원시부족 가면": "primitive_tribe_mask", "실종된 나무꾼의 장갑": "missing_logger_gloves", "고대 정령의 메아리": "ancient_spirit_echo", "나무의 정령의 연꽃 찻잔": "tree_spirit_lotus_teacup", "고급 나무꾼 상자": "advanced_logger_box", "영혼의 원소 가루": "soul_elemental_powder", "영혼의 원소 조각": "soul_elemental_shard", "영혼의 원소 정수": "soul_elemental_essence", "짐승의 송곳니": "beast_fang", "짐승의 가죽": "beast_hide", "짐승의 꼬리": "beast_tail", "독침": "poison_sting", "용의 피": "dragon_blood", "대지의 결정체": "earth_crystal", "부드러운 깃털": "soft_feather", "부드러운 털": "soft_fur", "버섯 고기": "mushroom_meat", "바람의 결정체": "wind_crystal", "물방울의 별": "waterdrop_star", "공허의 파동": "void_wave", "돌고래의 마음": "dolphin_heart", "물의 결정체": "water_crystal", "넘실거리는 불꽃": "waving_flame", "가스트의 파편": "ghast_fragment", "불의 결정체": "fire_crystal", "더러운 천": "dirty_cloth", "엔더 진주 가루": "ender_pearl_powder", "사악한 기운": "evil_energy", "수상한 주머니": "suspicious_pouch", "타락한 월계수 잎": "corrupted_laurel_leaf", "타락한 요정의 가루": "corrupted_fairy_powder", "어둠의 결정체": "dark_crystal", "미스틱 코어": "mystic_core", "갈비뼈": "rib_bone", "요정의 가루": "fairy_powder", "빛의 결정체": "light_crystal", "신비한 동물 가죽": "mystical_animal_hide", "실종된 사냥꾼 고글": "missing_hunter_goggles", "고대 맘모스 뿔": "ancient_mammoth_horn", "어둠의 정령의 부러진 스태프": "dark_spirit_broken_staff", "고급 사냥꾼 상자": "advanced_hunter_box", "실": "string", "안장": "saddle", "고사리": "fern", "슬라임볼": "slimeball", "깃털": "feather", "점토 덩이": "clay_ball", "마른 덤불": "dead_bush", "발광석 가루": "glowstone_dust", "레드스톤 가루": "redstone_dust", "뼈다귀": "bone", "화약": "gunpowder", "바다의 심장": "heart_of_the_sea", "인갑": "scute", "전달체": "conduit", "프리즈머린 수정": "prismarine_crystals", "프리즈머린 조각": "prismarine_shard", "먹물 주머니": "ink_sac", "발광 먹물 주머니": "glow_ink_sac", "젖은 스펀지": "wet_sponge", "가죽": "leather", "화염구": "fire_charge", "위더 장미": "wither_rose", "블레이즈 막대기": "blaze_rod", "벌레 먹은 돌": "infested_stone", "엔더 진주": "ender_pearl", "셜커 껍데기": "shulker_shell", "거미줄": "cobweb" };
+    let currentJob = null;
+    let logFiles = [];
 
-    let fullResultData = null;
-    let currentJob = sessionStorage.getItem('currentJob');
+    const modal = document.getElementById('analyzer-modal');
+    const analyzeButton = document.getElementById('analyze-button');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const fileInput = document.getElementById('log-file-input');
+    const fileChosenLabel = document.getElementById('file-chosen');
+    const modalTitle = document.getElementById('modal-title');
+    const dropZone = document.getElementById('file-drop-zone');
 
-    const sessionTableBody = document.getElementById('session-table-body');
+    function initializeApp() {
+        createMainMenu();
+        fileInput.addEventListener('change', (e) => {
+            logFiles = Array.from(e.target.files);
+            updateFileLabel();
+        });
 
-    function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-green-500', 'bg-green-50'); });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-green-500', 'bg-green-50'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-green-500', 'bg-green-50');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                logFiles = Array.from(files);
+                fileInput.files = files;
+                updateFileLabel();
+            }
+        });
 
-    function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates } = results;
-        const currentJobData = JOB_DATA[jobName];
-    
-        const titleDateString = (() => {
-            if (!uniqueDates || uniqueDates.length === 0) return "";
-            const formattedDates = uniqueDates.map(d => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1));
+        analyzeButton.addEventListener('click', async () => {
+            if (logFiles.length === 0 || !currentJob) {
+                alert('로그 파일을 먼저 선택해주세요.');
+                return;
+            }
+
+            loadingSpinner.classList.remove('hidden');
+            try {
+                const { allDatedLines, totalRankingPointGain } = await readAndProcessFiles(logFiles);
+                const results = await analyzeLog(allDatedLines, JOB_DATA[currentJob].items);
+                
+                results.totalRankingPointGain = totalRankingPointGain;
+
+                sessionStorage.setItem('analysisResult', JSON.stringify(results));
+                sessionStorage.setItem('currentJob', currentJob);
+                window.open('results.html', '_blank');
+                closeModal();
+            } catch (error) {
+                console.error(error);
+                alert(`분석 중 오류가 발생했습니다:\n${error.message}`);
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('close-modal-button').addEventListener('click', closeModal);
+    }
+
+    const libraryCheckInterval = setInterval(() => {
+        if (typeof window.buffer !== 'undefined' && typeof window.iconv !== 'undefined') {
+            clearInterval(libraryCheckInterval);
+            initializeApp();
+        }
+    }, 100);
+
+    function createMainMenu() {
+        const jobButtonsContainer = document.getElementById('job-buttons');
+        const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"];
+        jobOrder.forEach(jobName => {
+            const data = JOB_DATA[jobName];
+            const btn = document.createElement('button');
+            btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200";
+            btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`;
+            btn.onclick = () => openModal(jobName);
+            jobButtonsContainer.appendChild(btn);
+        });
+    }
+
+    function openModal(jobName) {
+        currentJob = jobName;
+        modalTitle.textContent = JOB_DATA[jobName].title;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        fileInput.value = '';
+        logFiles = [];
+        updateFileLabel();
+        loadingSpinner.classList.add('hidden');
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function updateFileLabel() {
+        if (logFiles.length > 1) {
+            fileChosenLabel.textContent = `${logFiles.length}개의 파일이 선택됨`;
+        } else if (logFiles.length === 1) {
+            fileChosenLabel.textContent = logFiles[0].name;
+        } else {
+            fileChosenLabel.textContent = '파일을 선택하거나 여기에 드롭하세요';
+        }
+    }
+
+    async function readAndProcessFiles(files) {
+        let totalRankingPointGain = 0;
+        const fileReadPromises = files.map(file => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const buffer = new Uint8Array(event.target.result);
+                        let dataToDecode = buffer;
+                        if (file.name.endsWith('.gz')) {
+                            dataToDecode = pako.inflate(buffer);
+                        }
+                        
+                        let text;
+                        try {
+                            text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
+                        } catch (e) {
+                            text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
+                        }
+                        
+                        const lines = text.split(/\r?\n/);
+                        const rankingPointRegex = /\[생활 \S+ ([\d,]+\.\d)\]/;
+                        let firstPoint = null, lastPoint = null;
+                        for(const line of lines){
+                            const match = line.match(rankingPointRegex);
+                            if(match && match[1]){
+                                const point = parseFloat(match[1].replace(/,/g, ''));
+                                if(!isNaN(point)) {
+                                    if(firstPoint === null) firstPoint = point;
+                                    lastPoint = point;
+                                }
+                            }
+                        }
+                        if(firstPoint !== null && lastPoint !== null && lastPoint >= firstPoint){
+                            totalRankingPointGain += (lastPoint - firstPoint);
+                        }
+
+                        const dateRegex = /(\d{4}-\d{2}-\d{2})/;
+                        let logDate = null;
+                        const match = file.name.match(dateRegex);
+                        if (match && match[1]) {
+                            logDate = match[1];
+                        } else {
+                            const today = new Date();
+                            logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        }
+
+                        const datedLines = lines.map(line => `${logDate}|${line}`);
+                        resolve(datedLines);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        });
+        const allDatedLinesArrays = await Promise.all(fileReadPromises);
+        const allDatedLines = allDatedLinesArrays.flat();
+        return { allDatedLines, totalRankingPointGain };
+    }
+
+    async function analyzeLog(datedLogs, itemList) {
+        const itemCounts = {};
+        itemList.forEach(item => itemCounts[item] = 0);
+        const sessions = [];
+        let currentSession = null;
+        let lastTime = null;
+        let firstLogTime = null;
+        let lastLogTime = null; 
+        let coinsEarned = 0.0;
+        let coinsSpent = 0.0;
+        let crabCount = 0;
+        let minigameCount = 0;
+        const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
+        const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/;
+        const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
+        const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
+        const minigamePattern = /\[CHAT\] 미니게임을 성공적으로 통과하여 보상을 획득합니다!/;
+        const timePattern = /^\[(\d{2}:\d{2}:\d{2})\]/;
+        const allDates = new Set();
+
+        datedLogs.forEach((datedLine, i) => {
+            if (!datedLine || !datedLine.includes('|')) return;
+            const [logDate, currentLine] = datedLine.split('|');
+
+            if (crabPattern.test(currentLine)) crabCount++;
+            if (minigamePattern.test(currentLine)) minigameCount++;
             
-            let isContinuous = true;
-            for (let i = 0; i < uniqueDates.length - 1; i++) {
-                const currentDate = new Date(uniqueDates[i]);
-                const nextDate = new Date(uniqueDates[i+1]);
-                const diffTime = Math.abs(nextDate - currentDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if (diffDays > 1) {
-                    isContinuous = false;
-                    break;
+            const earnedMatch = currentLine.match(coinEarnedPattern);
+            if (earnedMatch && earnedMatch[1]) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
+            
+            const spentMatch = currentLine.match(coinSpentPattern);
+            if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
+
+            const itemMatch = currentLine.match(acquisitionPattern);
+            if (itemMatch && itemMatch[1]) {
+                const rawItem = itemMatch[1].trim();
+                const count = parseInt(itemMatch[2], 10);
+                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                if (itemList.includes(itemName)) {
+                    itemCounts[itemName] = (itemCounts[itemName] || 0) + count;
+                }
+            }
+            
+            let isActivityLine = false;
+            if(itemMatch) {
+                 for (let j = 1; j < 5; j++) {
+                    if ((i + j) < datedLogs.length && datedLogs[i+j] && datedLogs[i+j].includes("생활랭킹 포인트")) {
+                        isActivityLine = true;
+                        break;
+                    }
                 }
             }
 
-            if (uniqueDates.length <= 2 && isContinuous) {
-                const start = firstLogTime ? new Date(firstLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
-                const end = lastLogTime ? new Date(lastLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
-                if (start === end) return start;
-                return start && end ? `${start} ~ ${end}` : "분석 결과";
-            } else {
-                 return formattedDates.join(', ');
+            if (isActivityLine) {
+                const timeMatch = currentLine.match(timePattern);
+                if (timeMatch && timeMatch[1]) {
+                    const timeStr = timeMatch[1];
+                    const timestamp = new Date(`${logDate}T${timeStr}`);
+                    
+                    if (!(timestamp instanceof Date) || isNaN(timestamp)) return; 
+
+                    allDates.add(logDate);
+                    if (firstLogTime === null || timestamp < firstLogTime) firstLogTime = timestamp;
+                    if (lastLogTime === null || timestamp > lastLogTime) lastLogTime = timestamp;
+
+                    if (currentSession === null) {
+                        currentSession = { start: timestamp, end: timestamp, items: {} };
+                        sessions.push(currentSession);
+                    } else if (lastTime && (timestamp.getTime() - lastTime.getTime()) / 1000 > 300) {
+                        currentSession = { start: timestamp, end: timestamp, items: {} };
+                        sessions.push(currentSession);
+                    }
+                    currentSession.end = timestamp;
+                    lastTime = timestamp;
+
+                    if (itemMatch) {
+                        const itemName = itemMatch[1].trim().replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                        const count = parseInt(itemMatch[2], 10);
+                        if(itemList.includes(itemName)) {
+                           currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
+                        }
+                    }
+                }
             }
-        })();
-    
-        document.getElementById('page-title').innerHTML = `${currentJobData.title} <span class="text-base text-gray-500 font-normal">${titleDateString}</span>`;
-        document.title = `${currentJobData.title} - ${titleDateString}`;
-    
-        const itemTableBody = document.getElementById('item-table-body');
-        itemTableBody.innerHTML = '';
-        const sortedTotalItems = currentJobData.items.filter(name => totalItemCounts[name] > 0);
-        
-        if (sortedTotalItems.length > 0) {
-            sortedTotalItems.forEach(name => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="flex-shrink-0 h-6 w-6"><img class="h-6 w-6 object-contain" src="${IMAGE_BASE_URL}${FILENAME_MAP[name] || name}.png" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';"></div><div class="ml-4 flex items-center"><div class="text-sm font-medium text-gray-900">${name}</div></div></div></td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(totalItemCounts[name])}</td>`;
-                itemTableBody.appendChild(tr);
-            });
-        } else {
-            itemTableBody.innerHTML = `<tr><td colspan="2" class="text-center px-6 py-4 text-gray-500">획득한 부산물이 없습니다.</td></tr>`;
-        }
-    
-        sessionTableBody.innerHTML = '';
-        let totalMinutes = 0;
-        const parsedSessions = sessions.map(s => ({ ...s, start: new Date(s.start), end: new Date(s.end) }));
-    
-        if (parsedSessions.length > 0) {
-            parsedSessions.forEach((session, idx) => {
-                const duration = Math.max(1, Math.floor((session.end.getTime() - session.start.getTime()) / 60000));
-                totalMinutes += duration;
-                const tr = document.createElement('tr');
-                tr.className = 'session-row';
-                tr.dataset.index = idx;
-                
-                const formatMDTime = (date) => {
-                    if (!(date instanceof Date) || isNaN(date)) return '유효하지 않은 시간';
-                    return `${date.getMonth() + 1}/${date.getDate()} ${date.toLocaleTimeString('ko-KR')}`;
-                };
-                const startTimeString = formatMDTime(session.start);
-                const endTimeString = formatMDTime(session.end);
-    
-                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${idx + 1}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${startTimeString}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${endTimeString}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">${duration}</td>`;
-                sessionTableBody.appendChild(tr);
-            });
-        } else {
-            sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
-        }
-    
-        const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
-        document.getElementById('session-label').innerHTML = `생직 시간 (총 ${totalMinutes}분)${rankingPointGainText}`;
-        
-        if (jobName === "어부") {
-            document.getElementById('fishing-info-box').classList.remove('hidden');
-            document.getElementById('crab-count-label').innerHTML = `<span class="font-semibold">오늘 만난 게 :</span> ${crabCount} 마리`;
-            document.getElementById('minigame-count-label').innerHTML = `<span class="font-semibold">오늘 진행한 미니게임 :</span> ${minigameCount} 번`;
-        }
-        
-        document.getElementById('earned-label').innerHTML = `<span class="font-semibold">번 돈 :</span> ${coinsEarned.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
-        document.getElementById('spent-label').innerHTML = `<span class="font-semibold">쓴 돈 :</span> ${coinsSpent.toLocaleString('ko-KR', { maximumFractionDigits: 0 })} 코인`;
-    }
-
-    function toggleSessionDetails(event) {
-        const row = event.target.closest('.session-row');
-        if (!row) return;
-
-        const existingDetailRow = document.querySelector('.session-details');
-        if (existingDetailRow) {
-            const parentRow = existingDetailRow.previousElementSibling;
-            parentRow.classList.remove('bg-blue-50', 'font-semibold');
-            const wasThisRow = parentRow === row;
-            existingDetailRow.remove();
-            if (wasThisRow) return;
-        }
-        
-        row.classList.add('bg-blue-50', 'font-semibold');
-        const sessionIndex = parseInt(row.dataset.index, 10);
-        const session = fullResultData.sessions[sessionIndex];
-        const sessionItems = session.items;
-        
-        const sortedSessionItems = JOB_DATA[currentJob].items.filter(itemName => sessionItems[itemName] > 0);
-
-        let detailsHtml = `<div class="bg-gray-50/50 p-4">`;
-        
-        if (sortedSessionItems.length > 0) {
-            detailsHtml += `<table class="min-w-full bg-white details-table"><tbody>`;
-            sortedSessionItems.forEach(itemName => {
-                const imageUrl = `${IMAGE_BASE_URL}${FILENAME_MAP[itemName] || itemName}.png`;
-                detailsHtml += `<tr>
-                    <td class="px-6 py-3 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 h-5 w-5 transform -translate-y-px">
-                                <img class="h-5 w-5 object-contain" src="${imageUrl}" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';">
-                            </div>
-                            <div class="ml-3 flex items-center">
-                                <div class="text-sm font-medium text-gray-900">${itemName}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-3 whitespace-nowrap text-center text-sm text-gray-500">${formatCount(sessionItems[itemName])}</td>
-                </tr>`;
-            });
-            detailsHtml += '</tbody></table></div>';
-        } else {
-            detailsHtml += '<p class="text-center text-gray-500 py-4">이 세션에서 획득한 부산물이 없습니다.</p></div>';
-        }
-
-        const detailRow = document.createElement('tr');
-        detailRow.className = 'session-details';
-        detailRow.innerHTML = `<td colspan="4">${detailsHtml}</td>`;
-        row.after(detailRow);
-    }
-
-    sessionTableBody.addEventListener('click', toggleSessionDetails);
-
-    const resultDataJSON = sessionStorage.getItem('analysisResult');
-
-    if (resultDataJSON && currentJob) {
-        try {
-            fullResultData = JSON.parse(resultDataJSON);
-            displayResults(fullResultData, currentJob);
-        } catch (e) {
-            console.error("결과 데이터를 불러오는 데 실패했습니다.", e);
-            document.getElementById('results-section').innerHTML = '<p class="text-center text-red-500">결과 데이터를 불러오는 중 오류가 발생했습니다.</p>';
-        }
-    } else {
-         document.getElementById('results-section').innerHTML = '<p class="text-center text-gray-500">표시할 분석 결과가 없습니다. 메인 페이지에서 로그 파일을 먼저 분석해주세요.</p>';
+        });
+        const uniqueDates = Array.from(allDates).sort();
+        return { itemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, uniqueDates };
     }
 });
 </script>
