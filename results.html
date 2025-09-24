@@ -44,7 +44,7 @@
                         </div>
                     </div>
                     <div>
-                        <h3 id="session-label" class="text-xl font-semibold mb-3 text-gray-700">생직 시간 (세션을 클릭하여 상세 정보 확인)</h3>
+                        <h3 id="session-label" class="text-xl font-semibold mb-3 text-gray-700">생직 시간</h3>
                         <div class="overflow-hidden border border-gray-200 rounded-lg">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
@@ -59,18 +59,22 @@
                             </table>
                         </div>
                     </div>
-                    <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-center space-x-6">
+
+                    <div id="fishing-info-box" class="bg-gray-50 p-4 rounded-lg flex-wrap items-center justify-center space-x-6 hidden">
                         <p id="crab-count-label" class="text-sm text-gray-700"><span class="font-semibold">만난 게 :</span> 0 마리</p>
                         <p id="minigame-count-label" class="text-sm text-gray-700"><span class="font-semibold">진행한 미니게임 :</span> 0 번</p>
                     </div>
-                    <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-center space-x-6">
-                        <img src="images/coin.png" alt="코인 아이콘" class="w-6 h-6 rounded-full">
-                        <p id="earned-label" class="text-md text-gray-700"><span class="font-semibold">번 돈 :</span> 0 코인</p>
-                        <p id="spent-label" class="text-md text-gray-700"><span class="font-semibold">쓴 돈 :</span> 0 코인</p>
+
+                    <div class="bg-gray-50 p-4 rounded-lg flex flex-wrap items-center justify-center space-x-6">
+                        <img src="images/coin.png" alt="코인 아이콘" class="w-6 h-6">
+                        <p id="earned-label" class="text-sm text-gray-700"><span class="font-semibold">번 돈 :</span> 0 코인</p>
+                        <p id="spent-label" class="text-sm text-gray-700"><span class="font-semibold">쓴 돈 :</span> 0 코인</p>
                     </div>
                 </div>
             </div>
              <div class="p-4 bg-gray-50 border-t text-right">
+                <p class="text-sm text-gray-500">이 창은 새로고침해도 결과가 유지됩니다.</p>
+            </div>
         </div>
     </div>
 
@@ -88,27 +92,38 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatCount(count) { if (count < 64) return `${count}`; const shulkerSize = 64 * 27; if (count >= shulkerSize) { const numShulkers = Math.floor(count / shulkerSize); const rem = count % shulkerSize; const numSets = Math.floor(rem / 64); const remInd = rem % 64; return `${count} (${numShulkers}셜커 ${numSets}셋 ${remInd}개)`; } else { const numSets = Math.floor(count / 64); const remInd = count % 64; return `${count} (${numSets}셋 ${remInd}개)`; } }
 
     function displayResults(results, jobName) {
-        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates, totalRankingPointGain, uniqueDates } = results;
+        const { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, totalRankingPointGain, uniqueDates } = results;
         const currentJobData = JOB_DATA[jobName];
     
-        // --- 1. 페이지 제목 설정 ---
         const titleDateString = (() => {
             if (!uniqueDates || uniqueDates.length === 0) return "";
             const formattedDates = uniqueDates.map(d => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1));
-            if (formattedDates.length > 2) {
-                return formattedDates.join(', ');
-            } else {
+            
+            let isContinuous = true;
+            for (let i = 0; i < uniqueDates.length - 1; i++) {
+                const currentDate = new Date(uniqueDates[i]);
+                const nextDate = new Date(uniqueDates[i+1]);
+                const diffTime = Math.abs(nextDate - currentDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 1) {
+                    isContinuous = false;
+                    break;
+                }
+            }
+
+            if (uniqueDates.length <= 2 && isContinuous) {
                 const start = firstLogTime ? new Date(firstLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
                 const end = lastLogTime ? new Date(lastLogTime).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit'}).replace(/\. /g, '.').slice(0,-1) : "";
                 if (start === end) return start;
                 return start && end ? `${start} ~ ${end}` : "분석 결과";
+            } else {
+                 return formattedDates.join(', ');
             }
         })();
     
         document.getElementById('page-title').innerHTML = `${currentJobData.title} <span class="text-base text-gray-500 font-normal">${titleDateString}</span>`;
         document.title = `${currentJobData.title} - ${titleDateString}`;
     
-        // --- 2. 전체 부산물 목록 표시 ---
         const itemTableBody = document.getElementById('item-table-body');
         itemTableBody.innerHTML = '';
         const sortedTotalItems = currentJobData.items.filter(name => totalItemCounts[name] > 0);
@@ -123,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
             itemTableBody.innerHTML = `<tr><td colspan="2" class="text-center px-6 py-4 text-gray-500">획득한 부산물이 없습니다.</td></tr>`;
         }
     
-        // --- 3. 세션 목록 표시 ---
         sessionTableBody.innerHTML = '';
         let totalMinutes = 0;
         const parsedSessions = sessions.map(s => ({ ...s, start: new Date(s.start), end: new Date(s.end) }));
@@ -150,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionTableBody.innerHTML = `<tr><td colspan="4" class="text-center px-6 py-4 text-gray-500">기록된 세션이 없습니다.</td></tr>`;
         }
     
-        // --- 4. 기타 정보 표시 ---
         const rankingPointGainText = totalRankingPointGain > 0 ? ` <span class="text-sm text-green-600 font-normal">(+${totalRankingPointGain.toFixed(1).replace(/\.0$/, '')}점)</span>` : "";
         document.getElementById('session-label').innerHTML = `생직 시간 (총 ${totalMinutes}분)${rankingPointGainText}`;
         
@@ -193,8 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailsHtml += `<tr>
                     <td class="px-6 py-3 whitespace-nowrap">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 h-5 w-5 transform -translate-y-[6px]">
-                                <img class="h-8 w-8 object-contain align-middle" src="${imageUrl}" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';">
+                            <div class="flex-shrink-0 h-5 w-5 transform -translate-y-px">
+                                <img class="h-5 w-5 object-contain" src="${imageUrl}" onerror="this.src='https://placehold.co/48x48/cccccc/ffffff?text=?';">
                             </div>
                             <div class="ml-3 flex items-center">
                                 <div class="text-sm font-medium text-gray-900">${itemName}</div>
@@ -206,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             detailsHtml += '</tbody></table></div>';
         } else {
-            detailsHtml += '<p class="text-center text-gray-500 py-4">이 세션에서 획득한 부산물이 없습니다. 다른 직업 활동을 했거나, 일일퀘스트/납품을 한 세션일 수 있습니다.</p></div>';
+            detailsHtml += '<p class="text-center text-gray-500 py-4">이 세션에서 획득한 부산물이 없습니다.</p></div>';
         }
 
         const detailRow = document.createElement('tr');
