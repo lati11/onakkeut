@@ -184,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!datedLine || !datedLine.includes('|')) return;
             const [logDate, currentLine] = datedLine.split('|');
     
-            // --- 모든 로그 라인에서 어부 정보 및 코인 정보 집계 ---
             if (crabPattern.test(currentLine)) crabCount++;
             if (minigamePattern.test(currentLine)) minigameCount++;
     
@@ -194,19 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const spentMatch = currentLine.match(coinSpentPattern);
             if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
     
-            // --- 아이템 획득 로그만 별도로 처리 ---
             const itemMatch = currentLine.match(acquisitionPattern);
             if (itemMatch && itemMatch[1]) {
                 const rawItem = itemMatch[1].trim();
                 const count = parseInt(itemMatch[2], 10);
                 const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
     
-                // 1. 전체 아이템 집계 (랭킹 포인트와 무관)
-                if (itemList.includes(itemName)) {
-                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
-                }
+
     
-                // 2. 생활랭킹 포인트가 동반되는 활동인지 확인 후 세션 기록
                 let foundRankingPoints = false;
                 for (let j = 1; j < 3; j++) {
                     if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
@@ -216,6 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (foundRankingPoints) {
+                    if (itemList.includes(itemName)) {
+                        totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                    }
                     const timeMatch = currentLine.match(timePattern);
                     if (timeMatch && timeMatch[1]) {
                         const timeStr = timeMatch[1];
@@ -237,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentSession.end = timestamp;
                         lastTime = timestamp;
     
-                        // 현재 세션에 아이템 추가
                         if (itemList.includes(itemName)) {
                             currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
                         }
