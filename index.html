@@ -251,6 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (foundRankingPoints) {
+                    if (itemList.includes(itemName)) {
+                        totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                    }
                     const timeMatch = currentLine.match(timePattern);
                     if (timeMatch && timeMatch[1]) {
                         const timeStr = timeMatch[1];
