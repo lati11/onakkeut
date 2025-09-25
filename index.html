@@ -14,6 +14,12 @@
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
         .modal-bg { background-color: rgba(0,0,0,0.5); }
+        .drag-over {
+            border-style: dashed;
+            border-width: 2px;
+            border-color: #3b82f6; /* Tailwind blue-500 */
+            background-color: #eff6ff; /* Tailwind blue-50 */
+        }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
@@ -44,7 +50,7 @@
                         <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
                         </svg>
-                        <span id="file-chosen" class="truncate">파일을 선택하세요</span>
+                        <span id="file-chosen" class="truncate">클릭하여 파일을 선택 (드래그&드롭 가능!)</span>
                         <input type='file' id="log-file-input" class="hidden" accept=".log,.gz" multiple/>
                     </label>
                 </div>
@@ -79,19 +85,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modal-title');
     
     function createMainMenu() { const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
-    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하세요'; loadingSpinner.classList.add('hidden'); }
+    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '클릭하여 파일을 선택하거나 드래그/드롭하세요'; loadingSpinner.classList.add('hidden'); }
     function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
 
-    fileInput.addEventListener('change', (e) => {
-        logFiles = Array.from(e.target.files);
+    function handleFiles(files) {
+        logFiles = Array.from(files);
+        fileInput.files = files;
+
         if (logFiles.length > 1) {
             fileChosenLabel.textContent = `${logFiles.length}개의 파일이 선택됨`;
         } else if (logFiles.length === 1) {
             fileChosenLabel.textContent = logFiles[0].name;
         } else {
-            fileChosenLabel.textContent = '파일을 선택하세요';
+            fileChosenLabel.textContent = '클릭하여 파일 선택 or 드래그/드롭';
         }
+    }
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
     });
+
+    const dropZone = document.getElementById('analyzer-modal');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.querySelector('.bg-white').classList.add('drag-over');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.querySelector('.bg-white').classList.remove('drag-over');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        handleFiles(e.dataTransfer.files);
+    }, false);
 
     async function readAndProcessFiles(files) {
         let totalRankingPointGain = 0;
@@ -184,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!datedLine || !datedLine.includes('|')) return;
             const [logDate, currentLine] = datedLine.split('|');
     
+            // --- 모든 로그 라인에서 어부 정보 및 코인 정보 집계 ---
             if (crabPattern.test(currentLine)) crabCount++;
             if (minigamePattern.test(currentLine)) minigameCount++;
     
@@ -193,14 +230,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const spentMatch = currentLine.match(coinSpentPattern);
             if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
     
+            // --- 아이템 획득 로그만 별도로 처리 ---
             const itemMatch = currentLine.match(acquisitionPattern);
             if (itemMatch && itemMatch[1]) {
                 const rawItem = itemMatch[1].trim();
                 const count = parseInt(itemMatch[2], 10);
                 const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
     
-
+                // 1. 전체 아이템 집계 (랭킹 포인트와 무관)
+                if (itemList.includes(itemName)) {
+                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
+                }
     
+                // 2. 생활랭킹 포인트가 동반되는 활동인지 확인 후 세션 기록
                 let foundRankingPoints = false;
                 for (let j = 1; j < 3; j++) {
                     if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
@@ -210,9 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (foundRankingPoints) {
-                    if (itemList.includes(itemName)) {
-                        totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
-                    }
                     const timeMatch = currentLine.match(timePattern);
                     if (timeMatch && timeMatch[1]) {
                         const timeStr = timeMatch[1];
@@ -234,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentSession.end = timestamp;
                         lastTime = timestamp;
     
+                        // 현재 세션에 아이템 추가
                         if (itemList.includes(itemName)) {
                             currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
                         }
