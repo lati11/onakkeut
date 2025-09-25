@@ -6,10 +6,8 @@
     <title>오낚끝 🎣</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/dist/buffer.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/iconv-lite@0.6.3/dist/iconv-lite.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/iconv-lite/0.6.3/iconv-lite.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
@@ -40,12 +38,14 @@
                     <label class="block text-gray-700 text-sm font-bold mb-2 text-left" for="log-file-input">
                         로그 파일 선택 (.log / .gz) - 여러 개 선택 가능
                     </label>
-                    <label class="w-full flex items-center px-4 py-2 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                            <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
-                        </svg>
-                        <span id="file-chosen" class="truncate">파일을 선택하세요</span>
-                        <input type='file' id="log-file-input" class="hidden" accept=".log,.gz" multiple/>
+                    <label id="file-drop-zone" class="w-full flex items-center justify-center h-32 px-4 py-2 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border-2 border-dashed border-gray-300 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors duration-200">
+                        <div class="text-center">
+                            <svg class="w-10 h-10 mx-auto mb-2 text-gray-400" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3V3h2v8z" />
+                            </svg>
+                            <span id="file-chosen" class="truncate block font-bold text-gray-500">파일을 선택하거나 여기에 드롭하세요</span>
+                            <input type='file' id="log-file-input" class="hidden" accept=".log,.gz" multiple/>
+                        </div>
                     </label>
                 </div>
                 <div id="loading-spinner" class="text-center my-8 hidden">
@@ -54,7 +54,6 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     <p class="mt-2 text-gray-600">로그 파일을 분석 중입니다...</p>
-                    <p id="analysis-status" class="mt-1 text-sm text-gray-500"></p>
                 </div>
             </div>
             <div class="p-4 bg-gray-50 border-t text-right space-x-2">
@@ -79,19 +78,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modal-title');
     
     function createMainMenu() { const jobButtonsContainer = document.getElementById('job-buttons'); const jobOrder = ["어부", "광부", "농부", "나무꾼", "사냥꾼"]; jobOrder.forEach(jobName => { const data = JOB_DATA[jobName]; const btn = document.createElement('button'); btn.className = "w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors duration-200"; btn.innerHTML = `<img src="images/${data.menu_icon}" alt="${jobName} 아이콘" class="w-6 h-6 mr-3 rounded"><span>${data.title.split(' ')[0]}</span>`; btn.onclick = () => openModal(jobName); jobButtonsContainer.appendChild(btn); }); }
-    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; fileChosenLabel.textContent = '파일을 선택하세요'; loadingSpinner.classList.add('hidden'); }
+    function openModal(jobName) { currentJob = jobName; modalTitle.textContent = JOB_DATA[jobName].title; modal.classList.remove('hidden'); modal.classList.add('flex'); fileInput.value = ''; logFiles = []; updateFileLabel(); loadingSpinner.classList.add('hidden'); }
     function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
 
     fileInput.addEventListener('change', (e) => {
         logFiles = Array.from(e.target.files);
+        updateFileLabel();
+    });
+    
+    const dropZone = document.getElementById('file-drop-zone');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-green-500', 'bg-green-50'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-green-500', 'bg-green-50'); });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-green-500', 'bg-green-50');
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            logFiles = Array.from(files);
+            fileInput.files = files;
+            updateFileLabel();
+        }
+    });
+
+    function updateFileLabel() {
         if (logFiles.length > 1) {
             fileChosenLabel.textContent = `${logFiles.length}개의 파일이 선택됨`;
         } else if (logFiles.length === 1) {
             fileChosenLabel.textContent = logFiles[0].name;
         } else {
-            fileChosenLabel.textContent = '파일을 선택하세요';
+            fileChosenLabel.textContent = '파일을 선택하거나 여기에 드롭하세요';
         }
-    });
+    }
 
     async function readAndProcessFiles(files) {
         let totalRankingPointGain = 0;
@@ -102,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const buffer = new Uint8Array(event.target.result);
                         let dataToDecode = buffer;
-    
+
                         if (file.name.endsWith('.gz')) {
                             dataToDecode = pako.inflate(buffer);
                         }
@@ -115,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         const lines = text.split(/\r?\n/);
-    
                         const rankingPointRegex = /\[생활 \S+ ([\d,]+\.\d)\]/;
                         let firstPoint = null, lastPoint = null;
                         for(const line of lines){
@@ -131,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if(firstPoint !== null && lastPoint !== null && lastPoint >= firstPoint){
                             totalRankingPointGain += (lastPoint - firstPoint);
                         }
-    
+
                         const dateRegex = /(\d{4}-\d{2}-\d{2})/;
                         let logDate = null;
                         const match = file.name.match(dateRegex);
@@ -141,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const today = new Date();
                             logDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                         }
-    
+
                         const datedLines = lines.map(line => `${logDate}|${line}`);
                         resolve(datedLines);
                     } catch (error) {
@@ -157,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return { allDatedLines, totalRankingPointGain };
     }
 
-
     async function analyzeLog(datedLogs, itemList) {
         const logs = datedLogs;
         const totalItemCounts = {};
@@ -171,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let coinsSpent = 0.0;
         let crabCount = 0;
         let minigameCount = 0;
-        const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다\./;
+        const acquisitionPattern = /\[CHAT\].*?(?:\?\s*)?(.*?)\s*x\s*(\d+)\s*개를 획득했습니다/;
         const coinEarnedPattern = /\[베어경제\] \+ ([\d,]+\.?[\d]*)/;
         const coinSpentPattern = /\[베어경제\] ([\d,]+\.?[\d]*) 코인 를 소모했습니다!/;
         const crabPattern = /\[CHAT\].*게를 낚았습니다\./;
@@ -179,36 +194,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const timePattern = /^\[(\d{2}:\d{2}:\d{2})\]/;
         
         const allDates = new Set();
-    
+
         logs.forEach((datedLine, i) => {
             if (!datedLine || !datedLine.includes('|')) return;
             const [logDate, currentLine] = datedLine.split('|');
-    
+
             // --- 모든 로그 라인에서 어부 정보 및 코인 정보 집계 ---
             if (crabPattern.test(currentLine)) crabCount++;
             if (minigamePattern.test(currentLine)) minigameCount++;
-    
+
             const earnedMatch = currentLine.match(coinEarnedPattern);
             if (earnedMatch && earnedMatch[1]) coinsEarned += parseFloat(earnedMatch[1].replace(/,/g, ''));
             
             const spentMatch = currentLine.match(coinSpentPattern);
             if (spentMatch && spentMatch[1]) coinsSpent += parseFloat(spentMatch[1].replace(/,/g, ''));
-    
-            // --- 아이템 획득 로그만 별도로 처리 ---
+
+            // --- 아이템 획득 및 세션 기록 (두가지가 동반될 때만) ---
             const itemMatch = currentLine.match(acquisitionPattern);
             if (itemMatch && itemMatch[1]) {
-                const rawItem = itemMatch[1].trim();
-                const count = parseInt(itemMatch[2], 10);
-                const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
-    
-                // 1. 전체 아이템 집계 (랭킹 포인트와 무관)
-                if (itemList.includes(itemName)) {
-                    totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
-                }
-    
-                // 2. 생활랭킹 포인트가 동반되는 활동인지 확인 후 세션 기록
                 let foundRankingPoints = false;
-                for (let j = 1; j < 3; j++) {
+                for (let j = 1; j < 5; j++) {
                     if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
                         foundRankingPoints = true;
                         break;
@@ -222,11 +227,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const timestamp = new Date(`${logDate}T${timeStr}`);
                         
                         if (!(timestamp instanceof Date) || isNaN(timestamp)) return; 
-    
+
                         allDates.add(logDate);
                         if (firstLogTime === null || timestamp < firstLogTime) firstLogTime = timestamp;
                         if (lastLogTime === null || timestamp > lastLogTime) lastLogTime = timestamp;
-    
+
                         if (currentSession === null) {
                             currentSession = { start: timestamp, end: timestamp, items: {} };
                             sessions.push(currentSession);
@@ -236,16 +241,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         currentSession.end = timestamp;
                         lastTime = timestamp;
-    
-                        // 현재 세션에 아이템 추가
+
+                        const rawItem = itemMatch[1].trim();
+                        const count = parseInt(itemMatch[2], 10);
+                        const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
+                        
                         if (itemList.includes(itemName)) {
+                            totalItemCounts[itemName] = (totalItemCounts[itemName] || 0) + count;
                             currentSession.items[itemName] = (currentSession.items[itemName] || 0) + count;
                         }
                     }
                 }
             }
         });
-    
+
         const uniqueDates = Array.from(allDates).sort();
         return { totalItemCounts, sessions, coinsEarned, coinsSpent, firstLogTime, lastLogTime, crabCount, minigameCount, uniqueDates };
     }
@@ -255,28 +264,19 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('로그 파일을 먼저 선택해주세요.');
             return;
         }
-        loadingSpinner.classList.remove('hidden');
-        document.getElementById('analysis-status').textContent = '분석이 완료되면 새 창이 열립니다.';
-        try {
-            const dateRegex = /(\d{4}-\d{2}-\d{2})/;
-            let logDate = null;
-            for (const file of logFiles) {
-                const match = file.name.match(dateRegex);
-                if (match) {
-                    logDate = match[1];
-                    break;
-                }
-            }
-            if (!logDate) {
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const day = String(today.getDate()).padStart(2, '0');
-                logDate = `${year}-${month}-${day}`;
-            }
 
+        if (typeof window.iconv === 'undefined' || typeof window.buffer === 'undefined') {
+            alert('분석 라이브러리를 불러오는 데 실패했습니다. 인터넷 연결을 확인하고 잠시 후 페이지를 새로고침(F5) 해주세요.');
+            return;
+        }
+
+        loadingSpinner.classList.remove('hidden');
+        try {
             const { allDatedLines, totalRankingPointGain } = await readAndProcessFiles(logFiles);
             const results = await analyzeLog(allDatedLines, JOB_DATA[currentJob].items);
+            
+            results.totalRankingPointGain = totalRankingPointGain;
+
             sessionStorage.setItem('analysisResult', JSON.stringify(results));
             sessionStorage.setItem('currentJob', currentJob);
             window.open('results.html', '_blank');
@@ -286,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`분석 중 오류가 발생했습니다:\n${error.message}`);
         } finally {
             loadingSpinner.classList.add('hidden');
-            document.getElementById('analysis-status').textContent = '';
         }
     });
     
