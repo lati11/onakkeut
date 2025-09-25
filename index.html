@@ -247,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
     
                 let foundRankingPoints = false;
+                // todo: 일퀘/납품 제외
                 for (let j = 1; j < 3; j++) {
                     if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
                         foundRankingPoints = true;
