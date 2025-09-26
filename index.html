@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
-                            text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
+                            text = iconv.decode(Buffer.from(dataToDecode), 'cp949');
                         }
                         
                         const lines = text.split(/\r?\n/);
@@ -248,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
     
                 let foundRankingPoints = false;
-                // todo: 일퀘/납품 제외
                 for (let j = 1; j < 3; j++) {
                     if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
                         foundRankingPoints = true;
