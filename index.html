@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>오낚 🎣</title>
+    <title>오낚끝 🎣</title>
     <link rel="icon" type="image/png" href="mainicon.png">
-    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/buffer.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/iconv-lite@0.6.3/dist/iconv-lite.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     
-    <script defer src="buffer.min.js"></script>
-    <script defer src="iconv-lite.min.js"></script>
+    <script src="buffer.min.js"></script>
+    <script src="iconv-lite.min.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             text = new TextDecoder('utf-8', { fatal: true }).decode(dataToDecode);
                         } catch (e) {
-                            text = window.iconv.decode(window.Buffer.from(dataToDecode), 'cp949');
+                            text = window.iconv.decode(window.buffer.Buffer.from(dataToDecode), 'cp949');
                         }
                         
                         const lines = text.split(/\r?\n/);
@@ -242,8 +242,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rawItem = itemMatch[1].trim();
                 const count = parseInt(itemMatch[2], 10);
                 const itemName = rawItem.replace(/^[^가-힣a-zA-Z0-9]*/, "");
-                
+    
                 let foundRankingPoints = false;
+                // todo: 일퀘/납품 제외
                 for (let j = 1; j < 3; j++) {
                     if ((i + j) < logs.length && logs[i+j] && logs[i+j].includes("생활랭킹 포인트")) {
                         foundRankingPoints = true;
