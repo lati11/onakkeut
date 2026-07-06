@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta http-equiv="refresh" content="10; url=https://onakkeut.kr">
+    
+    <link rel="canonical" href="https://onakkeut.kr">
+    
+    <title>오낚끝 주소변경!</title>
+    <style>
+        body { 
+            font-family: 'Pretendard', -apple-system, sans-serif; 
+            background-color: #f4f6f9; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .notice-box {
+            background-color: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        h1 { color: #2c3e50; font-size: 24px; margin-bottom: 15px; }
+        p { color: #5c6bc0; font-size: 16px; line-height: 1.6; margin-bottom: 25px; }
+        .spinner {
+            border: 3px solid #f3f3f3; border-top: 3px solid #5c6bc0;
+            border-radius: 50%; width: 20px; height: 20px;
+            animation: spin 1s linear infinite; margin: 0 auto 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn {
+            display: inline-block; padding: 8px 12px;
+            background-color: #5c6bc0; color: white;
+            text-decoration: none; font-size: 14px; border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .btn:hover { background-color: #3f51b5; }
+    </style>
+</head>
+<body>
+    <div class="notice-box">
+        <div class="spinner"></div>
+        <h1>🚚ㅤ오낚끝 이사합니다ㅤ🚚</h1>
+        <p>onakkeut.kr 이용해주세요 !!<br><br><strong>(10초 후 자동이동)</strong></p>
+        <a href="https://onakkeut.kr" class="btn">바로갈래</a>
+    </div>
+
+    <script>
+        setTimeout(function() {
+            window.location.href = "https://onakkeut.kr";
+        }, 10000);
+    </script>
+</body>
+</html>
